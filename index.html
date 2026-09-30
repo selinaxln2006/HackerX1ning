@@ -139,22 +139,62 @@
   function buildSprites() {
     const k = sc * dpr;
     sprites = FRUITS.map(f => {
-      const R = f.r * k, pad = 3 * k, size = Math.ceil(2 * (R + pad));
-      const c = document.createElement('canvas');
-      c.width = c.height = size;
-      const g = c.getContext('2d'), m = size / 2;
-      const grad = g.createRadialGradient(m - R * .35, m - R * .4, R * .1, m, m, R);
-      grad.addColorStop(0, shade(f.c, .5));
-      grad.addColorStop(1, f.c);
-      g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2);
-      g.fillStyle = grad; g.fill();
-      g.lineWidth = Math.max(1, R * .07); g.strokeStyle = shade(f.c, -.28); g.stroke();
-      g.font = `${Math.round(R * 1.1)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(f.e, m, m + R * .07);
-      g.beginPath(); g.ellipse(m - R * .42, m - R * .5, R * .2, R * .1, -.7, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(255,255,255,.6)'; g.fill();
-      return { c, size: size / k };
+      const R = f.r * k, pad = R * .25 + 3 * k, size = Math.ceil(2 * (R + pad)), m = size / 2;
+      const layer = draw => {
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        draw(c.getContext('2d'));
+        return c;
+      };
+      const circle = g => { g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); };
+
+      const base = layer(g => {
+        // 落在下方的柔和阴影
+        g.save(); g.translate(m, m + R * .92); g.scale(1, .22);
+        const sh = g.createRadialGradient(0, 0, 0, 0, 0, R * .9);
+        sh.addColorStop(0, 'rgba(110,50,0,.28)'); sh.addColorStop(1, 'rgba(110,50,0,0)');
+        g.fillStyle = sh; g.beginPath(); g.arc(0, 0, R * .9, 0, Math.PI * 2); g.fill();
+        g.restore();
+        // 果冻本体：左上受光，边缘加深
+        const body = g.createRadialGradient(m - R * .3, m - R * .45, R * .05, m, m, R * 1.05);
+        body.addColorStop(0, shade(f.c, .6));
+        body.addColorStop(.45, shade(f.c, .18));
+        body.addColorStop(.85, f.c);
+        body.addColorStop(1, shade(f.c, -.3));
+        circle(g); g.fillStyle = body; g.fill();
+        // 光线穿透后底部透亮（半透明感）
+        g.save(); circle(g); g.clip();
+        const glow = g.createRadialGradient(m + R * .1, m + R * .62, 0, m + R * .1, m + R * .62, R * .7);
+        glow.addColorStop(0, shade(f.c, .45)); glow.addColorStop(1, 'rgba(255,255,255,0)');
+        g.globalAlpha = .75; g.fillStyle = glow; g.fillRect(0, 0, size, size);
+        g.restore();
+      });
+
+      const emoji = layer(g => {
+        g.globalAlpha = .88;
+        g.font = `${Math.round(R * 1.02)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(f.e, m, m + R * .07);
+      });
+
+      const gloss = layer(g => {
+        // 大片柔光
+        g.save(); g.translate(m - R * .3, m - R * .45); g.rotate(-.5); g.scale(1, .6);
+        const hl = g.createRadialGradient(0, 0, 0, 0, 0, R * .48);
+        hl.addColorStop(0, 'rgba(255,255,255,.85)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = hl; g.beginPath(); g.arc(0, 0, R * .48, 0, Math.PI * 2); g.fill();
+        g.restore();
+        // 锐利的小高光点
+        g.beginPath(); g.ellipse(m - R * .46, m - R * .5, R * .1, R * .065, -.6, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255,255,255,.95)'; g.fill();
+        // 底部边缘反光
+        g.beginPath(); g.arc(m, m, R * .86, Math.PI * .18, Math.PI * .72);
+        g.lineCap = 'round'; g.lineWidth = R * .07; g.strokeStyle = 'rgba(255,255,255,.4)'; g.stroke();
+        // 轮廓
+        circle(g); g.lineWidth = Math.max(1, R * .035); g.strokeStyle = shade(f.c, -.4); g.globalAlpha = .45; g.stroke();
+      });
+
+      return { base, emoji, gloss, size: size / k };
     });
   }
 
@@ -213,7 +253,7 @@
 
   function makeBody(l, x, y, vx, vy) {
     const r = FRUITS[l].r;
-    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false };
+    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false, sq: 0, sv: 0, ang: Math.PI / 2 };
   }
 
   function reset(asDemo) {
@@ -240,6 +280,9 @@
     for (const b of bodies) {
       b.vy += G * dt;
       if (b.r < b.tr) b.r = Math.min(b.tr, b.r + b.gr * dt);
+      const K = 520 * Math.sqrt(40 / b.r);
+      b.sv += (-K * b.sq - 5.5 * b.sv) * dt;
+      b.sq = clamp(b.sq + b.sv * dt, -.22, .3);
     }
     // 速度层：接触处消除相互靠近的速度（带一点弹性和摩擦）
     for (let k = 0; k < VITER; k++) {
@@ -254,6 +297,11 @@
           const rvx = b.vx - a.vx, rvy = b.vy - a.vy, vn = rvx * nx + rvy * ny;
           if (vn >= 0) continue;
           const wa = 1 / (a.r * a.r), wb = 1 / (b.r * b.r), wt = wa + wb;
+          if (k === 0 && vn < -90) {
+            const ang = Math.atan2(ny, nx);
+            squish(a, -vn * 2 * wa / wt, ang);
+            squish(b, -vn * 2 * wb / wt, ang);
+          }
           const jn = -(1 + (vn < -300 ? .15 : 0)) * vn / wt;
           const vt = -rvx * ny + rvy * nx, jt = clamp(-vt / wt * .3, -jn * .4, jn * .4);
           const ix = nx * jn - ny * jt, iy = ny * jn + nx * jt;
@@ -264,7 +312,10 @@
       for (const b of bodies) {
         if (b.x <= b.r + 1 && b.vx < 0) b.vx *= -.2;
         if (b.x >= W - b.r - 1 && b.vx > 0) b.vx *= -.2;
-        if (b.y >= FLOOR - b.r - 1 && b.vy > 0) { b.vy *= b.vy > 300 ? -.15 : 0; b.vx *= .995; }
+        if (b.y >= FLOOR - b.r - 1 && b.vy > 0) {
+          if (k === 0 && b.vy > 90) squish(b, b.vy, Math.PI / 2);
+          b.vy *= b.vy > 300 ? -.15 : 0; b.vx *= .995;
+        }
       }
     }
     for (const b of bodies) {
@@ -283,13 +334,15 @@
           const b = bodies[j];
           if (b.dead) continue;
           const dx = b.x - a.x, dy = b.y - a.y, rs = a.r + b.r;
-          const d2 = dx * dx + dy * dy;
-          if (d2 >= rs * rs) continue;
+          const d2 = dx * dx + dy * dy, touch = rs + 4;
+          if (d2 >= touch * touch) continue;
+          // 挨着就算碰到（接触时两者之间可能留有 1px 缝隙）
           if (a.l === b.l && a.l < MAX && a.r === a.tr && b.r === b.tr) {
             a.dead = b.dead = true;
             merges.push([a, b]);
             break;
           }
+          if (d2 >= rs * rs) continue;
           const d = Math.sqrt(d2) || 1e-4, nx = dx / d, ny = dy / d;
           const ov = Math.min(rs - d, 4) * .6;
           const wa = 1 / (a.r * a.r), wb = 1 / (b.r * b.r), wt = wa + wb;
@@ -316,7 +369,13 @@
     }
   }
 
+  function squish(b, speed, ang) {
+    const amt = Math.min(.26, speed / 2400);
+    if (amt > b.sq) { b.sq = amt; b.sv = 0; b.ang = ang; }
+  }
+
   function onMerge(m) {
+    m.sq = -.2; m.sv = 0; m.ang = Math.PI / 2;
     const f = FRUITS[m.l];
     for (let i = 0; i < 10 + m.l * 3; i++) {
       const ang = rand(0, Math.PI * 2), sp = rand(120, 320 + m.l * 25);
@@ -415,12 +474,17 @@
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
 
-  function drawFruit(l, x, y, r, a, alpha) {
-    const sp = sprites[l], k = r / FRUITS[l].r, sz = sp.size * k;
+  function drawFruit(l, x, y, r, a, alpha, sq, ang) {
+    const sp = sprites[l], sz = sp.size * r / FRUITS[l].r, h = sz / 2;
     ctx.save();
     ctx.globalAlpha = alpha == null ? 1 : alpha;
-    ctx.translate(x, y); ctx.rotate(a);
-    ctx.drawImage(sp.c, -sz / 2, -sz / 2, sz, sz);
+    ctx.translate(x, y);
+    if (sq) { ctx.rotate(ang); ctx.scale(1 - sq, 1 + sq * .75); ctx.rotate(-ang); }
+    ctx.drawImage(sp.base, -h, -h, sz, sz);
+    ctx.rotate(a);
+    ctx.drawImage(sp.emoji, -h, -h, sz, sz);
+    ctx.rotate(-a);
+    ctx.drawImage(sp.gloss, -h, -h, sz, sz);
     ctx.restore();
   }
 
@@ -468,14 +532,10 @@
       ctx.setLineDash([4, 10]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(200,120,60,.35)';
       ctx.beginPath(); ctx.moveTo(x, HOVER_Y + r); ctx.lineTo(x, FLOOR); ctx.stroke();
       ctx.restore();
-      drawFruit(cur, x, HOVER_Y + Math.sin(time * 4) * 2, r, 0);
+      drawFruit(cur, x, HOVER_Y + Math.sin(time * 4) * 2, r, 0, 1, Math.sin(time * 5) * .04, Math.PI / 2);
     }
 
-    for (const b of bodies) {
-      let r = b.r;
-      if (b.gr && b.r >= b.tr && b.t < 1.25) r *= 1 + .12 * Math.sin((b.t - 1) / .25 * Math.PI);
-      drawFruit(b.l, b.x, b.y, r, b.a);
-    }
+    for (const b of bodies) drawFruit(b.l, b.x, b.y, b.r, b.a, 1, b.sq, b.ang);
 
     for (const p of parts) {
       ctx.globalAlpha = clamp(p.life / p.max * 1.4, 0, 1);
