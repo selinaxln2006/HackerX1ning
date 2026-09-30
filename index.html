@@ -80,6 +80,47 @@
   }
   button.go:active { transform: scale(.97); opacity: .85; }
   .fine { font-size: 11px; color: var(--faint); margin: 14px 0 0; letter-spacing: .04em; }
+  button.link {
+    display: block; margin: 12px auto 0; padding: 6px 10px; border: 0; background: none; cursor: pointer;
+    font-family: var(--serif); font-size: 15px; color: var(--ink); letter-spacing: .08em;
+    border-bottom: 1px solid rgba(31,27,22,.25); border-radius: 0;
+  }
+  .hint { font-size: 12px; color: var(--faint); margin: 12px 0 0; line-height: 1.6; }
+
+  /* 标本图鉴 */
+  #dex { align-items: flex-end; padding: 0; }
+  @media (min-height: 700px) { #dex { align-items: center; padding: 16px; } }
+  .sheet {
+    width: 100%; max-width: 420px; max-height: 88vh; display: flex; flex-direction: column;
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px 22px 0 0;
+    box-shadow: 0 30px 60px -24px rgba(70, 45, 20, .3); box-sizing: border-box;
+    animation: rise .5s cubic-bezier(.2, .9, .25, 1);
+  }
+  @media (min-height: 700px) { .sheet { border-radius: 22px; } }
+  .sheet-head { position: relative; padding: 24px 24px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+  .sheet-head h2 { color: var(--ink); font-size: 24px; letter-spacing: .06em; }
+  .sheet-head h2 small { font-size: 14px; color: var(--muted); margin-left: 6px; letter-spacing: .04em; }
+  .x {
+    position: absolute; right: 16px; top: 18px; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--line); background: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;
+  }
+  .scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+  .grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .spec { background: var(--card); padding: 16px 14px 18px; text-align: left; position: relative; }
+  .spec canvas { width: 64px; height: 64px; display: block; margin: 0 0 8px -4px; }
+  .spec .no { position: absolute; right: 14px; top: 16px; font-size: 9px; letter-spacing: .2em; color: var(--faint); }
+  .spec .nm { font-family: var(--serif); font-size: 18px; font-weight: 500; }
+  .spec .la { font-family: var(--serif); font-style: italic; font-size: 11px; color: var(--muted); margin: 2px 0 8px; }
+  .spec .nt { font-size: 12px; line-height: 1.6; color: var(--muted); }
+  .spec .ct { font-size: 9px; letter-spacing: .18em; color: var(--faint); margin-top: 10px; }
+  .spec.locked .nm, .spec.locked .la { color: var(--faint); }
+  .divider {
+    grid-column: 1 / -1; background: var(--paper); padding: 12px 14px;
+    font-size: 9px; letter-spacing: .28em; color: var(--faint); text-align: left;
+  }
   #snd {
     position: absolute; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom));
     width: 36px; height: 36px; border-radius: 50%;
@@ -109,8 +150,10 @@
     <canvas class="hero" id="hero"></canvas>
     <h1>合成大西瓜</h1>
     <p>左右拖动瞄准，松手放下。<br>两颗相同的果冻相碰，便会合成更大的一颗。</p>
+    <p class="hint">连击、榨汁机、彩虹果冻、榴莲……<br>玩着玩着就知道了。</p>
     <div class="chain" id="chain"></div>
     <button class="go" id="go">开始</button>
+    <button class="link" data-dex>标本图鉴 <span id="dexMini"></span></button>
     <p class="fine" id="bestStart">&nbsp;</p>
   </div>
 </div>
@@ -125,7 +168,19 @@
     </div>
     <p class="msg" id="finalMsg"></p>
     <button class="go" id="again">再来一局</button>
+    <button class="link" data-dex>标本图鉴</button>
     <p class="fine">点右上角「···」分享给朋友，看谁先合成大西瓜</p>
+  </div>
+</div>
+
+<div id="dex" class="ov hide">
+  <div class="sheet">
+    <div class="sheet-head">
+      <p class="eyebrow">Catalogue · 标本图鉴</p>
+      <h2 class="serif">已收录 <span id="dexCount">0</span><small>/ 13</small></h2>
+      <button class="x" id="dexClose" aria-label="关闭">×</button>
+    </div>
+    <div class="grid scroll" id="dexGrid"></div>
   </div>
 </div>
 
@@ -155,8 +210,27 @@
     { n: '菠萝',   c: '#a07a24', j: '#fbd84a', r: 88 },
     { n: '椰子',   c: '#5e3b22', j: '#efe9dc', r: 100 },
     { n: '大西瓜', c: '#2a6431', j: '#ff5a6e', r: 118 },
+    // 特殊标本：不参与普通合成链
+    { n: '彩虹果冻', c: '#b48ad6', j: '#ff9fc0', r: 26 },
+    { n: '榴莲',     c: '#6f7a28', j: '#e6d77a', r: 32 },
   ];
-  const MAX = FRUITS.length - 1;
+  const MAX = 10, RAINBOW = 11, DURIAN = 12;
+  const INFO = [
+    ['Prunus avium', '最小的标本，一切从这里开始。'],
+    ['Fragaria × ananassa', '籽长在外面。严格说，它并不是浆果。'],
+    ['Vitis vinifera', '切开之后，是一枚绿色的小月亮。'],
+    ['Citrus reticulata', '十瓣，刚好分给十个人。'],
+    ['Citrus limon', '酸，是它的防身术。'],
+    ['Actinidia chinensis', '一圈黑籽，像一圈睫毛。'],
+    ['Solanum lycopersicum', '植物学上是水果，厨房里是蔬菜。'],
+    ['Prunus persica', '果核上的纹路，每一颗都不一样。'],
+    ['Ananas comosus', '由上百朵小花合成而来——它自己也在玩这个游戏。'],
+    ['Cocos nucifera', '坚硬的外壳里，藏着一片安静的湖。'],
+    ['Citrullus lanatus', '终点。也是夏天本身。'],
+    ['Gelatina iridescens', '碰到谁，谁就升一级。偶尔从天而降。'],
+    ['Durio zibethinus', '落地片刻后爆开，清空身边的小水果。'],
+  ];
+  const dexNo = l => l > MAX ? 'Nº S' + (l - MAX) : no(l);
   const POINTS = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 100];
   const NOTES = [392, 440, 523, 587, 659, 784, 880, 1047, 1175, 1319, 1568];
   const no = l => 'Nº ' + String(l + 1).padStart(2, '0');
@@ -172,6 +246,17 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   };
   let best = +store.get('xigua-best') || 0;
+  let dex;
+  try { dex = JSON.parse(store.get('xigua-dex')); } catch (e) {}
+  if (!dex || !Array.isArray(dex.made) || dex.made.length !== 13) dex = { made: Array(13).fill(0) };
+  const saveDex = () => store.set('xigua-dex', JSON.stringify(dex));
+  // 记录一次；返回是否首次发现
+  function discover(l) {
+    const first = dex.made[l] === 0;
+    dex.made[l]++;
+    saveDex();
+    return first;
+  }
 
   // ---------- 画布与精灵 ----------
   let dpr = 1, cw = 0, ch = 0, sc = 1, ox = 0, oy = 0, sprites = [];
@@ -339,6 +424,37 @@
         seed(g, m + Math.cos(a) * d, m + Math.sin(a) * d, R * .05, R * .03, a, '#1c1410');
       }
     },
+    // 彩虹果冻：一圈柔和的色带 + 乳白漩涡
+    (g, m, R) => {
+      for (let i = 0; i < 12; i++) {
+        g.beginPath(); g.moveTo(m, m);
+        g.arc(m, m, R * .92, i / 12 * TAU, (i + 1) / 12 * TAU + .01); g.closePath();
+        g.fillStyle = `hsl(${i * 30},85%,72%)`; g.fill();
+      }
+      disc(g, m, R * .92, radial(g, m, R * .1, R * .92, [[0, 'rgba(255,255,255,.95)'], [.55, 'rgba(255,255,255,.35)'], [1, 'rgba(255,255,255,0)']]));
+      g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = R * .06; g.lineCap = 'round';
+      g.beginPath();
+      for (let t = 0; t < 1; t += .02) {
+        const a = t * TAU * 1.6, d = R * (.1 + t * .6);
+        t === 0 ? g.moveTo(m + Math.cos(a) * d, m + Math.sin(a) * d) : g.lineTo(m + Math.cos(a) * d, m + Math.sin(a) * d);
+      }
+      g.stroke();
+    },
+    // 榴莲：整颗带刺
+    (g, m, R, rnd) => {
+      disc(g, m, R * .95, radial(g, m, R * .1, R * .95, [[0, '#b7bf5a'], [1, '#6b7626']]));
+      for (let ring = 0; ring < 4; ring++) {
+        const d = R * (.2 + ring * .22), n = 6 + ring * 7;
+        for (let i = 0; i < n; i++) {
+          const a = i / n * TAU + ring * .3 + rnd() * .1, x = m + Math.cos(a) * d, y = m + Math.sin(a) * d;
+          const s = R * (.1 - ring * .012);
+          g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * .85, y + s * .55); g.lineTo(x - s * .85, y + s * .55); g.closePath();
+          g.fillStyle = 'rgba(70,80,20,.55)'; g.fill();
+          g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * .3, y); g.lineTo(x - s * .3, y); g.closePath();
+          g.fillStyle = 'rgba(240,245,180,.4)'; g.fill();
+        }
+      }
+    },
   ];
 
   function buildSprites() {
@@ -452,21 +568,29 @@
   let score = 0, shownScore = 0, cur = 0, next = 0, aimX = W / 2, aiming = false;
   let cooldown = 0, dangerT = 0, maxLvl = 0, banner = null, shake = 0;
   let over = true, demo = true, demoT = 0, dropped = 0, time = 0;
+  let combo = 0, lastMerge = -9, juice = 0, layers = [], juiceReady = false, tapJar = false;
+  const JAR = { x: W / 2 - 17, y: 30, w: 34, h: 50 };
 
   function randLevel() {
     if (dropped < 3) return [0, 0, 1][dropped];
+    if (dropped >= 8) {
+      const r = Math.random();
+      if (r < .05) return RAINBOW;
+      if (r < .09) return DURIAN;
+    }
     const pool = [0, 0, 0, 1, 1, 1, 2, 2, 3, 4];
     return pool[(Math.random() * pool.length) | 0];
   }
 
   function makeBody(l, x, y, vx, vy) {
     const r = FRUITS[l].r;
-    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false, sq: 0, sv: 0, ang: Math.PI / 2 };
+    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false, sq: 0, sv: 0, ang: Math.PI / 2, fuse: -1 };
   }
 
   function reset(asDemo) {
     bodies = []; parts = []; floats = []; fireworks = [];
     score = shownScore = 0; dropped = 0; maxLvl = 0; dangerT = 0; banner = null; cooldown = 0;
+    combo = 0; lastMerge = -9; juice = 0; layers = []; juiceReady = false;
     demo = asDemo; over = asDemo;
     cur = randLevel(); dropped = 1; next = randLevel(); dropped = 0;
     document.title = '合成大西瓜';
@@ -477,6 +601,7 @@
     const r = FRUITS[cur].r;
     bodies.push(makeBody(cur, clamp(x, r, W - r), HOVER_Y, 0, 0));
     sfx.drop();
+    if (discover(cur) && cur > MAX) showNew(cur);
     dropped++;
     cur = next; next = randLevel();
     cooldown = .45;
@@ -545,10 +670,19 @@
           const d2 = dx * dx + dy * dy, touch = rs + 4;
           if (d2 >= touch * touch) continue;
           // 挨着就算碰到（接触时两者之间可能留有 1px 缝隙）
-          if (a.l === b.l && a.l < MAX && a.r === a.tr && b.r === b.tr) {
-            a.dead = b.dead = true;
-            merges.push([a, b]);
-            break;
+          if (a.r === a.tr && b.r === b.tr) {
+            if (a.l === b.l && a.l < MAX) {
+              a.dead = b.dead = true;
+              merges.push([a, b, false]);
+              break;
+            }
+            // 彩虹果冻：让碰到的水果原地升一级
+            const ra = a.l === RAINBOW, rb = b.l === RAINBOW, tgt = ra ? b : a;
+            if (ra !== rb && tgt.l < MAX) {
+              a.dead = b.dead = true;
+              merges.push([tgt, ra ? a : b, true]);
+              break;
+            }
           }
           if (d2 >= rs * rs) continue;
           const d = Math.sqrt(d2) || 1e-4, nx = dx / d, ny = dy / d;
@@ -566,8 +700,15 @@
     }
     if (merges.length) {
       bodies = bodies.filter(b => !b.dead);
-      for (const [a, b] of merges) {
-        const m = makeBody(a.l + 1, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.vx + b.vx) / 2, (a.vy + b.vy) / 2);
+      for (const [a, b, rainbow] of merges) {
+        const m = rainbow
+          ? makeBody(a.l + 1, a.x, a.y, a.vx, a.vy)
+          : makeBody(a.l + 1, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.vx + b.vx) / 2, (a.vy + b.vy) / 2);
+        if (rainbow) for (let i = 0; i < 24; i++) {
+          const an = rand(0, TAU), sp = rand(100, 300);
+          parts.push({ x: b.x, y: b.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: rand(.5, .9), max: .9,
+            size: rand(2, 4), color: `hsl(${(Math.random() * 360) | 0},85%,70%)`, g: 300 });
+        }
         m.r = FRUITS[a.l].r;
         m.gr = (m.tr - m.r) / .15;
         m.t = 1;
@@ -591,16 +732,91 @@
         life: rand(.4, .8), max: .8, size: rand(2, 4 + m.l * .35), color: i % 3 ? f.j : f.c, g: 900 });
     }
     if (demo || over) return;
-    const pts = POINTS[m.l];
+    combo = time - lastMerge < 1.1 ? combo + 1 : 1;
+    lastMerge = time;
+    const pts = Math.round(POINTS[m.l] * (1 + (combo - 1) * .5));
     score += pts;
-    floats.push({ x: m.x, y: m.y - m.r * .3, text: '+' + pts, life: 1 });
+    floats.push({ x: m.x, y: m.y - m.r * .3, text: combo > 1 ? `+${pts}  ×${combo}` : '+' + pts, life: 1 });
     sfx.merge(m.l);
     vibrate(12);
-    if (m.l > maxLvl) {
-      maxLvl = m.l;
-      if (m.l === MAX) celebrate();
-      else if (m.l >= 5) banner = { kicker: 'NEW SPECIMEN · 新标本', text: `${no(m.l)}  ${f.n}`, life: 1.8, max: 1.8 };
+    addJuice(f.j, (.035 + m.l * .012) * (1 + (combo - 1) * .3));
+    const first = discover(m.l);
+    if (m.l > maxLvl) maxLvl = m.l;
+    if (m.l === MAX) celebrate();
+    else if (first && m.l >= 3) showNew(m.l);
+  }
+
+  function showNew(l) {
+    banner = { kicker: 'NEW SPECIMEN · 已收录图鉴', text: `${dexNo(l)}  ${FRUITS[l].n}`, life: 2, max: 2 };
+    tone(880, 1320, .25, 'sine', .12); tone(1320, 1760, .3, 'sine', .08, .12);
+  }
+
+  // ---------- 榨汁机 ----------
+  function addJuice(color, amt) {
+    if (juiceReady) return;
+    amt = Math.min(amt, 1 - juice);
+    const top = layers[layers.length - 1];
+    if (top && top.c === color) top.v += amt; else layers.push({ c: color, v: amt });
+    juice += amt;
+    if (juice >= .999) {
+      juiceReady = true;
+      banner = { kicker: 'JUICER READY · 果汁满了', text: '点顶部的瓶子榨汁', life: 1.8, max: 1.8 };
+      [660, 880, 1100].forEach((fq, i) => tone(fq, fq, .18, 'triangle', .1, i * .08));
     }
+  }
+
+  function juicer() {
+    const victims = bodies.filter(b => b.l <= 1);
+    bodies = bodies.filter(b => b.l > 1);
+    let gain = 0;
+    for (const v of victims) {
+      gain += 4;
+      for (let i = 0; i < 8; i++) {
+        const an = rand(0, TAU), sp = rand(80, 260);
+        parts.push({ x: v.x, y: v.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 150, life: rand(.4, .8), max: .8,
+          size: rand(2, 4), color: FRUITS[v.l].j, g: 900 });
+      }
+    }
+    score += gain;
+    juice = 0; layers = []; juiceReady = false;
+    banner = { kicker: 'JUICER · 榨汁机', text: victims.length ? `鲜榨 ${victims.length} 颗  +${gain}` : '空榨了一杯', life: 1.6, max: 1.6 };
+    [520, 440, 360, 300].forEach((fq, i) => tone(fq, fq * .7, .12, 'sine', .15, i * .07));
+    vibrate(30);
+  }
+
+  // ---------- 榴莲 ----------
+  function explode(d) {
+    d.dead = true;
+    let gain = 0;
+    for (const o of bodies) {
+      if (o === d || o.dead) continue;
+      const dx = o.x - d.x, dy = o.y - d.y, dist = Math.hypot(dx, dy) || 1;
+      if (dist - o.r > 120) continue;
+      if (o.l <= 3 || o.l === RAINBOW) {
+        o.dead = true; gain += 2;
+        for (let i = 0; i < 6; i++) {
+          const an = rand(0, TAU), sp = rand(100, 280);
+          parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 100, life: rand(.4, .7), max: .7,
+            size: rand(2, 4), color: FRUITS[o.l].j, g: 900 });
+        }
+      } else {
+        const k = 700 * (1 - Math.min(1, (dist - o.r) / 120)) / Math.sqrt(o.r / 40);
+        o.vx += dx / dist * k; o.vy += dy / dist * k - 150;
+      }
+    }
+    bodies = bodies.filter(b => !b.dead);
+    for (let i = 0; i < 14; i++) {
+      const an = rand(0, TAU), sp = rand(20, 90);
+      parts.push({ x: d.x + rand(-20, 20), y: d.y + rand(-20, 20), vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 30,
+        life: rand(1, 1.6), max: 1.6, size: rand(14, 30), color: 'rgba(170,185,70,.35)', g: -40, cloud: true });
+    }
+    if (!demo && !over) {
+      score += gain;
+      floats.push({ x: d.x, y: d.y - 20, text: gain ? `臭！ +${gain}` : '臭！', life: 1.2 });
+    }
+    shake = .35;
+    tone(140, 40, .45, 'sine', .4); tone(90, 30, .5, 'triangle', .2, .02);
+    vibrate([40, 30, 60]);
   }
 
   function celebrate() {
@@ -657,6 +873,12 @@
     for (const fw of fireworks) { fw.t -= dt; if (fw.t <= 0) burst(fw.x, fw.y); }
     fireworks = fireworks.filter(fw => fw.t > 0);
     if (banner && (banner.life -= dt) <= 0) banner = null;
+
+    for (const b of bodies) {
+      if (b.l !== DURIAN) continue;
+      if (b.fuse < 0 && b.t > .5) b.fuse = 1.3;
+      if (b.fuse >= 0 && (b.fuse -= dt) <= 0) { explode(b); break; }
+    }
 
     if (demo) {
       demoT -= dt;
@@ -745,12 +967,21 @@
       drawFruit(cur, x, HOVER_Y + Math.sin(time * 3) * 2, r, 0, 1, Math.sin(time * 4.5) * .035, Math.PI / 2);
     }
 
-    for (const b of bodies) drawFruit(b.l, b.x, b.y, b.r, b.a, 1, b.sq, b.ang);
+    for (const b of bodies) {
+      if (b.l === DURIAN && b.fuse >= 0) {
+        // 引信：一圈倒计时 + 越来越快的颤动
+        const k = 1 - b.fuse / 1.3, jit = Math.sin(time * (20 + k * 40)) * .05 * k;
+        drawFruit(b.l, b.x, b.y, b.r, b.a, 1, jit, 0);
+        ctx.strokeStyle = `rgba(200,69,47,${.4 + .5 * k})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * k); ctx.stroke();
+      } else drawFruit(b.l, b.x, b.y, b.r, b.a, 1, b.sq, b.ang);
+    }
 
     for (const p of parts) {
       ctx.globalAlpha = clamp(p.life / p.max * 1.3, 0, 1) * .85;
       ctx.fillStyle = p.color;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
+      if (p.cloud) continue;
       ctx.fillStyle = 'rgba(255,255,255,.6)';
       ctx.beginPath(); ctx.arc(p.x - p.size * .3, p.y - p.size * .3, p.size * .3, 0, TAU); ctx.fill();
     }
@@ -767,6 +998,12 @@
       label('SCORE', 22, 30, 'left');
       text(String(Math.round(shownScore)), 20, 68, { size: 46, serif: true, align: 'left' });
       label('BEST  ' + Math.max(best, score), 22, 102, 'left');
+      drawJar();
+      if (combo > 1 && time - lastMerge < 1.1) {
+        ctx.globalAlpha = clamp((1.1 - (time - lastMerge)) * 2, 0, 1);
+        text('COMBO ×' + combo, W / 2, 136, { size: 11, spacing: 3, weight: 600, color: '#c8452f' });
+        ctx.globalAlpha = 1;
+      }
       label('NEXT', W - 22, 30, 'right');
       drawFruit(next, W - 44, 66, Math.min(22, FRUITS[next].r), 0);
       text(FRUITS[next].n, W - 44, 102, { size: 11, serif: true, color: 'rgba(31,27,22,.6)' });
@@ -794,6 +1031,44 @@
     }
   }
 
+  function drawJar() {
+    const { x, y, w, h } = JAR, r = 7;
+    const shape = () => {
+      ctx.beginPath();
+      ctx.moveTo(x + 3, y); ctx.lineTo(x + w - 3, y);
+      ctx.lineTo(x + w, y + 8); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + 8); ctx.closePath();
+    };
+    ctx.save();
+    if (juiceReady) {
+      ctx.shadowColor = rgba(layers.length ? layers[layers.length - 1].c : '#ffa53a', .9);
+      ctx.shadowBlur = 12 + 6 * Math.sin(time * 6);
+    }
+    shape(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
+    ctx.shadowBlur = 0;
+    shape(); ctx.clip();
+    let yy = y + h;
+    const inner = h - 8;
+    layers.forEach((L, i) => {
+      const lh = L.v * inner;
+      ctx.fillStyle = L.c; ctx.globalAlpha = .85;
+      const wave = i === layers.length - 1 ? Math.sin(time * 3) * 1.2 : 0;
+      ctx.fillRect(x, yy - lh - wave, w, lh + wave + .5);
+      yy -= lh;
+    });
+    ctx.globalAlpha = 1;
+    const hl = ctx.createLinearGradient(x, 0, x + w, 0);
+    hl.addColorStop(0, 'rgba(255,255,255,.5)'); hl.addColorStop(.3, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl; ctx.fillRect(x, y, w, h);
+    ctx.restore();
+    shape(); ctx.strokeStyle = 'rgba(31,27,22,.35)'; ctx.lineWidth = 1; ctx.stroke();
+    if (juiceReady) {
+      ctx.globalAlpha = .6 + .4 * Math.sin(time * 5);
+      text('TAP · 榨汁', x + w / 2, y + h + 12, { size: 9, spacing: 2, weight: 600, color: '#c8452f' });
+      ctx.globalAlpha = 1;
+    } else label('JUICE', x + w / 2, y + h + 12);
+  }
+
   // ---------- 开始页的插图 ----------
   function paintIcon(c, l, css) {
     const sp = sprites[l];
@@ -809,7 +1084,7 @@
     g.restore();
   }
   const chainEl = $('chain');
-  FRUITS.forEach((f, l) => {
+  FRUITS.slice(0, MAX + 1).forEach((f, l) => {
     const c = document.createElement('canvas');
     c.title = f.n;
     chainEl.appendChild(c);
@@ -817,18 +1092,73 @@
   function paintIcons() {
     paintIcon($('hero'), MAX, 132);
     [...chainEl.children].forEach((c, l) => paintIcon(c, l, 22));
+    if (!$('dex').classList.contains('hide')) renderDex();
   }
+
+  // ---------- 标本图鉴 ----------
+  function paintLocked(c, l, css) {
+    paintIcon(c, l, css);
+    const g = c.getContext('2d');
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = '#ddd6cb'; g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'source-over';
+  }
+  function renderDex() {
+    const grid = $('dexGrid');
+    grid.innerHTML = '';
+    let found = 0;
+    FRUITS.forEach((f, l) => {
+      if (l === RAINBOW) {
+        const dv = document.createElement('div');
+        dv.className = 'divider'; dv.textContent = 'SPECIAL · 特殊标本';
+        grid.appendChild(dv);
+      }
+      const n = dex.made[l], el = document.createElement('div');
+      if (n) found++;
+      el.className = 'spec' + (n ? '' : ' locked');
+      el.innerHTML = `<canvas></canvas><div class="no">${dexNo(l).replace('Nº ', 'Nº&nbsp;')}</div>
+        <div class="nm">${n ? f.n : '未发现'}</div>
+        <div class="la">${n ? INFO[l][0] : '— — —'}</div>
+        <div class="nt">${n ? INFO[l][1] : (l > MAX ? '偶尔从天而降。' : '继续合成来发现它。')}</div>
+        ${n ? `<div class="ct">出现 ×${n}</div>` : ''}`;
+      grid.appendChild(el);
+      (n ? paintIcon : paintLocked)(el.querySelector('canvas'), l, 64);
+    });
+    $('dexCount').textContent = found;
+  }
+  function dexSummary() {
+    const found = dex.made.filter(Boolean).length;
+    $('dexMini').textContent = found ? `· ${found}/13` : '';
+  }
+  document.querySelectorAll('[data-dex]').forEach(b => b.addEventListener('click', () => {
+    renderDex();
+    $('dex').classList.remove('hide');
+    $('dexGrid').scrollTop = 0;
+  }));
+  const closeDex = () => { $('dex').classList.add('hide'); dexSummary(); };
+  $('dexClose').addEventListener('click', closeDex);
+  $('dex').addEventListener('click', e => { if (e.target === $('dex')) closeDex(); });
+  dexSummary();
 
   // ---------- 输入 ----------
   const toWorldX = e => (e.clientX - ox) / sc;
-  cv.addEventListener('pointerdown', e => { if (over) return; aiming = true; aimX = toWorldX(e); });
+  const toWorldY = e => (e.clientY - oy) / sc;
+  cv.addEventListener('pointerdown', e => {
+    if (over) return;
+    const x = toWorldX(e), y = toWorldY(e);
+    if (juiceReady && x > JAR.x - 18 && x < JAR.x + JAR.w + 18 && y > JAR.y - 14 && y < JAR.y + JAR.h + 24) {
+      tapJar = true; juicer(); return;
+    }
+    aiming = true; aimX = x;
+  });
   cv.addEventListener('pointermove', e => { if (over) return; aimX = toWorldX(e); });
   cv.addEventListener('pointerup', e => {
+    if (tapJar) { tapJar = false; return; }
     if (over || !aiming) return;
     aiming = false; aimX = toWorldX(e); drop(aimX);
   });
   cv.addEventListener('pointercancel', () => { aiming = false; });
-  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  document.addEventListener('touchmove', e => { if (!e.target.closest('.scroll')) e.preventDefault(); }, { passive: false });
   document.addEventListener('contextmenu', e => e.preventDefault());
 
   function startGame() {
