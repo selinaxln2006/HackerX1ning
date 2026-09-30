@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#f2eee7">
-<meta name="description" content="把两个一样的水果软糖碰在一起，合成更大的，目标：大西瓜。">
+<meta name="description" content="把两个一样的水果碰在一起，合成更大的，目标：大西瓜。">
 <title>合成大西瓜</title>
 <style>
   :root {
@@ -15,6 +15,7 @@
     --muted: #7d756b;
     --faint: #a59d92;
     --line: rgba(31, 27, 22, .1);
+    --gold: #b8892a;
     --serif: "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif SC", "Noto Serif CJK SC", "STSong", "SimSun", Georgia, serif;
     --sans: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   }
@@ -35,7 +36,7 @@
     background: rgba(242, 238, 231, .55);
     -webkit-backdrop-filter: blur(10px) saturate(1.1); backdrop-filter: blur(10px) saturate(1.1);
     padding: 16px; box-sizing: border-box;
-    transition: opacity .4s ease;
+    transition: opacity .35s ease;
   }
   .ov.hide { opacity: 0; pointer-events: none; }
   .card {
@@ -79,6 +80,7 @@
     transition: transform .15s ease, opacity .15s;
   }
   button.go:active { transform: scale(.97); opacity: .85; }
+  button.go:disabled { opacity: .28; cursor: default; transform: none; }
   .fine { font-size: 11px; color: var(--faint); margin: 14px 0 0; letter-spacing: .04em; }
   button.link {
     display: block; margin: 12px auto 0; padding: 6px 10px; border: 0; background: none; cursor: pointer;
@@ -87,56 +89,96 @@
   }
   .hint { font-size: 12px; color: var(--faint); margin: 12px 0 0; line-height: 1.6; }
 
-  /* 标本图鉴 */
-  #dex { align-items: flex-end; padding: 0; }
-  @media (min-height: 700px) { #dex { align-items: center; padding: 16px; } }
+  /* 底部圆形按钮 */
+  .fab {
+    position: absolute; bottom: calc(12px + env(safe-area-inset-bottom));
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(251, 249, 245, .85);
+    display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+    color: var(--ink);
+  }
+  .fab svg { width: 16px; height: 16px; }
+  #snd { right: 14px; }
+  #dexBtn { left: 14px; }
+  #snd .off { display: none; }
+  #snd.muted .on { display: none; }
+  #snd.muted .off { display: inline; }
+
+  /* 底部抽屉（图鉴 / 榨汁机） */
+  .drawer { align-items: flex-end; padding: 0; }
+  @media (min-height: 760px) { .drawer { align-items: center; padding: 16px; } }
   .sheet {
-    width: 100%; max-width: 420px; max-height: 88vh; display: flex; flex-direction: column;
+    width: 100%; max-width: 420px; max-height: 90vh; display: flex; flex-direction: column;
     background: var(--card); border: 1px solid var(--line); border-radius: 22px 22px 0 0;
     box-shadow: 0 30px 60px -24px rgba(70, 45, 20, .3); box-sizing: border-box;
-    animation: rise .5s cubic-bezier(.2, .9, .25, 1);
+    animation: rise .45s cubic-bezier(.2, .9, .25, 1);
   }
-  @media (min-height: 700px) { .sheet { border-radius: 22px; } }
-  .sheet-head { position: relative; padding: 24px 24px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+  @media (min-height: 760px) { .sheet { border-radius: 22px; } }
+  .sheet-head { position: relative; padding: 22px 24px 14px; border-bottom: 1px solid var(--line); text-align: left; flex: none; }
   .sheet-head h2 { color: var(--ink); font-size: 24px; letter-spacing: .06em; }
   .sheet-head h2 small { font-size: 14px; color: var(--muted); margin-left: 6px; letter-spacing: .04em; }
+  .sheet-head .sub { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
   .x {
-    position: absolute; right: 16px; top: 18px; width: 36px; height: 36px; border-radius: 50%;
+    position: absolute; right: 16px; top: 16px; width: 36px; height: 36px; border-radius: 50%;
     border: 1px solid var(--line); background: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;
   }
   .scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+
+  /* 图鉴 */
   .grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line);
     padding-bottom: env(safe-area-inset-bottom);
   }
   .spec { background: var(--card); padding: 16px 14px 18px; text-align: left; position: relative; }
-  .spec canvas { width: 64px; height: 64px; display: block; margin: 0 0 8px -4px; }
+  .spec canvas { width: 68px; height: 68px; display: block; margin: 0 0 6px -6px; }
   .spec .no { position: absolute; right: 14px; top: 16px; font-size: 9px; letter-spacing: .2em; color: var(--faint); }
+  .spec .gold { position: absolute; right: 12px; top: 34px; font-size: 9px; letter-spacing: .12em; color: var(--gold); }
   .spec .nm { font-family: var(--serif); font-size: 18px; font-weight: 500; }
   .spec .la { font-family: var(--serif); font-style: italic; font-size: 11px; color: var(--muted); margin: 2px 0 8px; }
   .spec .nt { font-size: 12px; line-height: 1.6; color: var(--muted); }
-  .spec .ct { font-size: 9px; letter-spacing: .18em; color: var(--faint); margin-top: 10px; }
+  .spec .ct { font-size: 9px; letter-spacing: .14em; color: var(--faint); margin-top: 10px; }
   .spec.locked .nm, .spec.locked .la { color: var(--faint); }
   .divider {
     grid-column: 1 / -1; background: var(--paper); padding: 12px 14px;
     font-size: 9px; letter-spacing: .28em; color: var(--faint); text-align: left;
   }
-  #snd {
-    position: absolute; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom));
-    width: 36px; height: 36px; border-radius: 50%;
-    border: 1px solid var(--line); background: rgba(251, 249, 245, .8);
-    display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
-    color: var(--ink);
+
+  /* 榨汁机 */
+  #juicer .sheet { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+  .stage { display: flex; gap: 14px; align-items: center; padding: 10px 20px 2px; flex: none; }
+  #cup { width: 104px; height: 136px; flex: none; touch-action: none; }
+  .recipe { flex: 1; min-width: 0; text-align: left; }
+  .recipe .rn { font-family: var(--serif); font-size: 21px; font-weight: 500; line-height: 1.3; }
+  .recipe .re { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 6px 0 0; }
+  .recipe .rp { font-size: 10px; letter-spacing: .16em; color: var(--faint); margin-top: 8px; }
+  .charge { padding: 2px 20px 12px; flex: none; }
+  .charge .bar { height: 4px; border-radius: 4px; background: rgba(31,27,22,.08); overflow: hidden; margin: 6px 0 10px; }
+  .charge .bar i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 4px; transition: width .3s; }
+  .charge .lb { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .18em; color: var(--faint); }
+  .shelf {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 1px; background: var(--line);
+    border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); flex: none;
   }
-  #snd svg { width: 16px; height: 16px; }
-  #snd .off { display: none; }
-  #snd.muted .on { display: none; }
-  #snd.muted .off { display: inline; }
+  .item { background: var(--card); padding: 8px 2px 6px; text-align: center; touch-action: none; cursor: grab; }
+  .item canvas { width: 38px; height: 38px; margin: 0 auto; pointer-events: none; }
+  .item .q { font-size: 10px; color: var(--muted); letter-spacing: .08em; margin-top: 2px; }
+  .item .q b { color: var(--gold); font-weight: 500; }
+  .empty { grid-column: 1 / -1; background: var(--card); padding: 22px; font-size: 13px; color: var(--faint); text-align: center; }
+  #ghost {
+    position: fixed; left: 0; top: 0; width: 60px; height: 60px; pointer-events: none; z-index: 20;
+    display: none; filter: drop-shadow(0 8px 10px rgba(60,40,20,.25));
+  }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<button id="snd" aria-label="声音开关">
+<button id="dexBtn" class="fab" aria-label="标本图鉴">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z"/>
+    <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/>
+  </svg>
+</button>
+<button id="snd" class="fab" aria-label="声音开关">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>
     <path class="on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>
@@ -146,11 +188,11 @@
 
 <div id="start" class="ov">
   <div class="card">
-    <p class="eyebrow">A Study in Fruit Jelly</p>
+    <p class="eyebrow">A Study in Fruit</p>
     <canvas class="hero" id="hero"></canvas>
     <h1>合成大西瓜</h1>
-    <p>左右拖动瞄准，松手放下。<br>两颗相同的果冻相碰，便会合成更大的一颗。</p>
-    <p class="hint">连击、榨汁机、彩虹果冻、榴莲……<br>玩着玩着就知道了。</p>
+    <p>左右拖动瞄准，松手放下。<br>两颗相同的水果相碰，便会合成更大的一颗。</p>
+    <p class="hint">连击、金色果实、榨汁配方、彩虹果冻、榴莲……<br>玩着玩着就知道了。</p>
     <div class="chain" id="chain"></div>
     <button class="go" id="go">开始</button>
     <button class="link" data-dex>标本图鉴 <span id="dexMini"></span></button>
@@ -173,16 +215,43 @@
   </div>
 </div>
 
-<div id="dex" class="ov hide">
+<div id="dex" class="ov drawer hide">
   <div class="sheet">
     <div class="sheet-head">
       <p class="eyebrow">Catalogue · 标本图鉴</p>
       <h2 class="serif">已收录 <span id="dexCount">0</span><small>/ 13</small></h2>
-      <button class="x" id="dexClose" aria-label="关闭">×</button>
+      <p class="sub" id="dexSub"></p>
+      <button class="x" data-close aria-label="关闭">×</button>
     </div>
     <div class="grid scroll" id="dexGrid"></div>
   </div>
 </div>
+
+<div id="juicer" class="ov drawer hide">
+  <div class="sheet scroll">
+    <div class="sheet-head">
+      <p class="eyebrow">Juicer · 榨汁机</p>
+      <h2 class="serif">调一杯</h2>
+      <p class="sub">把库存水果拖进杯子（最多 3 个），点杯里的水果可拿出。</p>
+      <button class="x" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="stage">
+      <canvas id="cup"></canvas>
+      <div class="recipe">
+        <div class="rn" id="rName">空杯子</div>
+        <p class="re" id="rEff">拖一个水果进来看看会榨出什么。</p>
+        <div class="rp" id="rPts"></div>
+      </div>
+    </div>
+    <div class="charge">
+      <div class="lb"><span>ENERGY · 能量</span><span id="chargeTxt">0%</span></div>
+      <div class="bar"><i id="chargeBar"></i></div>
+      <button class="go" id="blend" disabled>榨汁</button>
+    </div>
+    <div class="shelf" id="shelf"></div>
+  </div>
+</div>
+<canvas id="ghost"></canvas>
 
 <script>
 (() => {
@@ -197,43 +266,43 @@
   const SANS = '-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
   const INK = '#1f1b16';
 
-  // c：果冻外皮颜色；j：果肉/果汁颜色（用于溅射和投影）
+  // c：果皮主色；j：果汁颜色；gloss：光泽度；core：光照层覆盖的半径（水果形状内切圆）
   const FRUITS = [
-    { n: '樱桃',   c: '#a3122c', j: '#d42a45', r: 18 },
-    { n: '草莓',   c: '#e0344a', j: '#ff6272', r: 25 },
-    { n: '葡萄',   c: '#5e2a85', j: '#c7df8e', r: 33 },
-    { n: '橘子',   c: '#f28a1d', j: '#ffa53a', r: 40 },
-    { n: '柠檬',   c: '#eec21a', j: '#ffe066', r: 48 },
-    { n: '猕猴桃', c: '#6b5230', j: '#7cc242', r: 57 },
-    { n: '番茄',   c: '#d9331c', j: '#ff5a3a', r: 66 },
-    { n: '桃子',   c: '#e8604a', j: '#ffb56a', r: 77 },
-    { n: '菠萝',   c: '#a07a24', j: '#fbd84a', r: 88 },
-    { n: '椰子',   c: '#5e3b22', j: '#efe9dc', r: 100 },
-    { n: '大西瓜', c: '#2a6431', j: '#ff5a6e', r: 118 },
+    { n: '樱桃',     c: '#b3122c', j: '#d42a45', r: 18,  gloss: .95, core: .86 },
+    { n: '草莓',     c: '#e02c3c', j: '#ff5a6a', r: 25,  gloss: .7,  core: .62 },
+    { n: '葡萄',     c: '#5b2a86', j: '#a878d8', r: 33,  gloss: .55, core: .86 },
+    { n: '橘子',     c: '#f4880f', j: '#ffa53a', r: 40,  gloss: .4,  core: .94 },
+    { n: '柠檬',     c: '#f2cf1d', j: '#ffe066', r: 48,  gloss: .45, core: .78 },
+    { n: '猕猴桃',   c: '#8a6337', j: '#7cc242', r: 57,  gloss: .08, core: .84 },
+    { n: '番茄',     c: '#e0301e', j: '#ff5a3a', r: 66,  gloss: .95, core: .86 },
+    { n: '桃子',     c: '#f2a25a', j: '#ffb56a', r: 77,  gloss: .12, core: .9 },
+    { n: '菠萝',     c: '#d9a12a', j: '#fbd84a', r: 88,  gloss: .3,  core: .76 },
+    { n: '椰子',     c: '#6a4326', j: '#efe9dc', r: 100, gloss: .06, core: .92 },
+    { n: '大西瓜',   c: '#3f9443', j: '#ff5a6e', r: 118, gloss: .6,  core: .88 },
     // 特殊标本：不参与普通合成链
-    { n: '彩虹果冻', c: '#b48ad6', j: '#ff9fc0', r: 26 },
-    { n: '榴莲',     c: '#6f7a28', j: '#e6d77a', r: 32 },
+    { n: '彩虹果冻', c: '#b48ad6', j: '#ff9fc0', r: 26,  gloss: 1,   core: .9 },
+    { n: '榴莲',     c: '#8c9a34', j: '#e6d77a', r: 32,  gloss: .15, core: .78 },
   ];
-  const MAX = 10, RAINBOW = 11, DURIAN = 12;
+  const MAX = 10, RAINBOW = 11, DURIAN = 12, NF = FRUITS.length;
+  const POINTS = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 100];
+  const NOTES = [392, 440, 523, 587, 659, 784, 880, 1047, 1175, 1319, 1568];
   const INFO = [
     ['Prunus avium', '最小的标本，一切从这里开始。'],
     ['Fragaria × ananassa', '籽长在外面。严格说，它并不是浆果。'],
-    ['Vitis vinifera', '切开之后，是一枚绿色的小月亮。'],
-    ['Citrus reticulata', '十瓣，刚好分给十个人。'],
+    ['Vitis vinifera', '表面那层白霜叫果粉，是它自己长的防晒霜。'],
+    ['Citrus reticulata', '剥开通常是十瓣，刚好分给十个人。'],
     ['Citrus limon', '酸，是它的防身术。'],
-    ['Actinidia chinensis', '一圈黑籽，像一圈睫毛。'],
+    ['Actinidia chinensis', '毛茸茸的外表下，藏着一圈黑色的睫毛。'],
     ['Solanum lycopersicum', '植物学上是水果，厨房里是蔬菜。'],
-    ['Prunus persica', '果核上的纹路，每一颗都不一样。'],
+    ['Prunus persica', '那道浅浅的中缝，每一颗都不一样。'],
     ['Ananas comosus', '由上百朵小花合成而来——它自己也在玩这个游戏。'],
-    ['Cocos nucifera', '坚硬的外壳里，藏着一片安静的湖。'],
+    ['Cocos nucifera', '三个小眼睛里，只有一个能发芽。'],
     ['Citrullus lanatus', '终点。也是夏天本身。'],
     ['Gelatina iridescens', '碰到谁，谁就升一级。偶尔从天而降。'],
     ['Durio zibethinus', '落地片刻后爆开，清空身边的小水果。'],
   ];
-  const dexNo = l => l > MAX ? 'Nº S' + (l - MAX) : no(l);
-  const POINTS = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 100];
-  const NOTES = [392, 440, 523, 587, 659, 784, 880, 1047, 1175, 1319, 1568];
   const no = l => 'Nº ' + String(l + 1).padStart(2, '0');
+  const dexNo = l => l > MAX ? 'Nº S' + (l - MAX) : no(l);
 
   const $ = id => document.getElementById(id);
   const cv = $('c'), ctx = cv.getContext('2d');
@@ -246,14 +315,19 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   };
   let best = +store.get('xigua-best') || 0;
+  // made：累计出现次数（图鉴）；stock：库存（榨汁用）；gold：金色标本次数
   let dex;
   try { dex = JSON.parse(store.get('xigua-dex')); } catch (e) {}
-  if (!dex || !Array.isArray(dex.made) || dex.made.length !== 13) dex = { made: Array(13).fill(0) };
+  if (!dex || !Array.isArray(dex.made) || dex.made.length !== NF) dex = { made: Array(NF).fill(0) };
+  if (!Array.isArray(dex.stock) || dex.stock.length !== NF) dex.stock = dex.made.slice();
+  if (!Array.isArray(dex.gold) || dex.gold.length !== NF) dex.gold = Array(NF).fill(0);
   const saveDex = () => store.set('xigua-dex', JSON.stringify(dex));
   // 记录一次；返回是否首次发现
-  function discover(l) {
+  function discover(l, gold) {
     const first = dex.made[l] === 0;
     dex.made[l]++;
+    dex.stock[l]++;
+    if (gold) dex.gold[l]++;
     saveDex();
     return first;
   }
@@ -261,7 +335,7 @@
   // ---------- 画布与精灵 ----------
   let dpr = 1, cw = 0, ch = 0, sc = 1, ox = 0, oy = 0, sprites = [];
 
-  function shade(hex, amt) {
+  function mix(hex, amt) {
     const n = parseInt(hex.slice(1), 16);
     let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
     const t = amt > 0 ? 255 : 0, p = Math.abs(amt);
@@ -272,167 +346,234 @@
     const n = parseInt(hex.slice(1), 16);
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
   };
-
-  // 固定种子的随机数，保证每次重绘花纹一致
-  function seeded(seed) {
-    return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  function seeded(s) {
+    return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
   }
-
-  // ---------- 各水果横切面花纹（在 detail 层里画，随滚动旋转） ----------
-  function disc(g, m, r, fill) { g.beginPath(); g.arc(m, m, r, 0, TAU); g.fillStyle = fill; g.fill(); }
-  function radial(g, m, r0, r1, stops) {
-    const gr = g.createRadialGradient(m, m, r0, m, m, r1);
+  function grad(g, cx, cy, r0, r1, stops) {
+    const gr = g.createRadialGradient(cx, cy, r0, cx, cy, r1);
     stops.forEach(([o, c]) => gr.addColorStop(o, c));
     return gr;
   }
-  function spokes(g, m, n, r0, r1, color, width, jitter, rnd) {
-    g.strokeStyle = color; g.lineWidth = width; g.lineCap = 'round';
-    for (let i = 0; i < n; i++) {
-      const a = i / n * TAU + (jitter ? (rnd() - .5) * jitter : 0);
-      g.beginPath();
-      g.moveTo(m + Math.cos(a) * r0, m + Math.sin(a) * r0);
-      g.lineTo(m + Math.cos(a) * r1, m + Math.sin(a) * r1);
-      g.stroke();
+  // 球体着色：左上亮、边缘暗（烘焙在果皮上）
+  const skin = (g, m, R, base, lift, deep) =>
+    grad(g, m - R * .28, m - R * .34, R * .05, R * 1.15, [[0, mix(base, lift || .38)], [.55, base], [1, mix(base, -(deep || .5))]]);
+  function ell(cx, cy, rx, ry, rot) { const p = new Path2D(); p.ellipse(cx, cy, rx, ry, rot || 0, 0, TAU); return p; }
+  // 按极坐标半径函数生成闭合形状
+  function polar(cx, cy, fn, rot) {
+    const p = new Path2D();
+    for (let i = 0; i <= 96; i++) {
+      const t = i / 96 * TAU, r = fn(t), a = t + (rot || 0);
+      i ? p.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : p.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
     }
+    p.closePath();
+    return p;
   }
-  function seed(g, x, y, rx, ry, rot, fill) {
-    g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU); g.fillStyle = fill; g.fill();
+  // 在形状内随机撒点（毛孔、绒毛、籽等）
+  function speckle(g, path, box, n, rnd, draw) {
+    g.save(); g.clip(path);
+    for (let i = 0; i < n; i++) draw(box.x + rnd() * box.w, box.y + rnd() * box.h, rnd);
+    g.restore();
   }
-  function citrus(g, m, R, n, rind, membrane, pulpIn, pulpOut) {
-    disc(g, m, R * .97, rind);
-    disc(g, m, R * .86, membrane);
-    for (let i = 0; i < n; i++) {
-      const a0 = i / n * TAU, a1 = (i + 1) / n * TAU, mid = (a0 + a1) / 2, gap = .045;
-      g.beginPath();
-      g.moveTo(m + Math.cos(mid) * R * .1, m + Math.sin(mid) * R * .1);
-      g.arc(m, m, R * .82, a0 + gap, a1 - gap);
-      g.closePath();
-      g.fillStyle = radial(g, m, R * .08, R * .82, [[0, pulpIn], [1, pulpOut]]);
-      g.fill();
-      g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = R * .014; g.lineCap = 'round';
-      for (let s = 1; s < 4; s++) {
-        const a = a0 + s / 4 * (a1 - a0);
-        g.beginPath();
-        g.moveTo(m + Math.cos(a) * R * .28, m + Math.sin(a) * R * .28);
-        g.lineTo(m + Math.cos(a) * R * .74, m + Math.sin(a) * R * .74);
-        g.stroke();
-      }
-    }
-    disc(g, m, R * .1, membrane);
+  function stem(g, x0, y0, cx, cy, x1, y1, w, color) {
+    g.lineCap = 'round';
+    g.strokeStyle = color; g.lineWidth = w;
+    g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(cx, cy, x1, y1); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = w * .3;
+    g.beginPath(); g.moveTo(x0 - w * .2, y0); g.quadraticCurveTo(cx - w * .2, cy, x1 - w * .2, y1); g.stroke();
+  }
+  function leaf(g, x, y, len, wid, ang, color) {
+    g.save(); g.translate(x, y); g.rotate(ang);
+    const p = new Path2D();
+    p.moveTo(0, 0); p.quadraticCurveTo(len * .45, -wid, len, 0); p.quadraticCurveTo(len * .45, wid, 0, 0);
+    const lg = g.createLinearGradient(0, -wid, 0, wid);
+    lg.addColorStop(0, mix(color, .25)); lg.addColorStop(1, mix(color, -.3));
+    g.fillStyle = lg; g.fill(p);
+    g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = Math.max(.5, wid * .12);
+    g.beginPath(); g.moveTo(len * .05, 0); g.lineTo(len * .85, 0); g.stroke();
+    g.restore();
   }
 
-  const DETAILS = [
-    // 樱桃：深红果肉 + 奶色果核
+  // ---------- 各水果外观（在 body 层里画，随滚动旋转；0° 为果梗朝上） ----------
+  const PAINT = [
+    // 樱桃
     (g, m, R) => {
-      disc(g, m, R * .9, radial(g, m, 0, R * .9, [[0, '#e0394f'], [1, '#8e0f25']]));
-      seed(g, m, m, R * .24, R * .3, 0, 'rgba(246,214,182,.92)');
-      seed(g, m - R * .05, m - R * .08, R * .08, R * .12, 0, 'rgba(255,255,255,.5)');
+      stem(g, m, m - R * .62, m + R * .02, m - R * 1.05, m + R * .42, m - R * 1.32, R * .1, '#5d7a2a');
+      const body = ell(m, m + R * .06, R * .9, R * .86);
+      g.fillStyle = skin(g, m, R, '#b8132e', .35, .62); g.fill(body);
+      g.fillStyle = 'rgba(60,0,12,.45)'; g.fill(ell(m, m - R * .74, R * .16, R * .06));
     },
-    // 草莓：浅色芯 + 放射纹 + 边缘籽
+    // 草莓
     (g, m, R, rnd) => {
-      disc(g, m, R * .92, radial(g, m, 0, R * .92, [[0, '#ffe3e4'], [.45, '#ff8a95'], [1, '#e02c42']]));
-      spokes(g, m, 14, R * .12, R * .66, 'rgba(255,255,255,.35)', R * .035, .2, rnd);
-      for (let i = 0; i < 12; i++) {
-        const a = i / 12 * TAU;
-        seed(g, m + Math.cos(a) * R * .8, m + Math.sin(a) * R * .8, R * .045, R * .07, a, '#ffd86b');
-      }
-    },
-    // 葡萄：紫皮 + 青绿果肉 + 两粒籽
-    (g, m, R, rnd) => {
-      disc(g, m, R * .84, radial(g, m, 0, R * .84, [[0, '#eef6cf'], [.7, '#c8e08e'], [1, '#9fbf5c']]));
-      spokes(g, m, 10, R * .2, R * .7, 'rgba(255,255,255,.28)', R * .025, .3, rnd);
-      seed(g, m - R * .16, m + R * .02, R * .07, R * .13, .3, 'rgba(150,110,50,.85)');
-      seed(g, m + R * .16, m - R * .02, R * .07, R * .13, -.3, 'rgba(150,110,50,.85)');
-    },
-    // 橘子
-    (g, m, R) => citrus(g, m, R, 10, '#f7a23a', '#ffe7c2', '#ffc46b', '#f7861b'),
-    // 柠檬
-    (g, m, R) => citrus(g, m, R, 9, '#f5d33a', '#fff6cf', '#fff08c', '#f2cc1c'),
-    // 猕猴桃：棕皮 + 绿果肉 + 白芯 + 一圈黑籽
-    (g, m, R, rnd) => {
-      disc(g, m, R * .93, radial(g, m, R * .2, R * .93, [[0, '#b9dd6a'], [.5, '#7cc242'], [1, '#4f9124']]));
-      spokes(g, m, 44, R * .3, R * .88, 'rgba(240,250,205,.28)', R * .012, .08, rnd);
-      disc(g, m, R * .26, radial(g, m, 0, R * .26, [[0, '#fbfbe6'], [1, '#e6efb4']]));
-      for (let i = 0; i < 34; i++) {
-        const a = i / 34 * TAU + rnd() * .1, d = R * (.34 + rnd() * .12);
-        seed(g, m + Math.cos(a) * d, m + Math.sin(a) * d, R * .045, R * .02, a, '#231a10');
-      }
-    },
-    // 番茄：三个果腔 + 籽
-    (g, m, R, rnd) => {
-      disc(g, m, R * .94, radial(g, m, 0, R * .94, [[0, '#ffb190'], [.35, '#f0573a'], [1, '#c92a17']]));
-      for (let i = 0; i < 3; i++) {
-        const a = i / 3 * TAU - Math.PI / 2, cx = m + Math.cos(a) * R * .46, cy = m + Math.sin(a) * R * .46;
-        g.beginPath(); g.ellipse(cx, cy, R * .3, R * .22, a + Math.PI / 2, 0, TAU);
-        g.fillStyle = 'rgba(255,150,110,.8)'; g.fill();
-        for (let s = 0; s < 6; s++) {
-          const sa = rnd() * TAU, sd = rnd() * R * .15;
-          seed(g, cx + Math.cos(sa) * sd, cy + Math.sin(sa) * sd, R * .04, R * .026, sa, '#fff1b8');
+      const p = new Path2D();
+      p.moveTo(m, m + R * .98);
+      p.bezierCurveTo(m - R * .45, m + R * .86, m - R * 1, m + R * .1, m - R * .88, m - R * .36);
+      p.bezierCurveTo(m - R * .8, m - R * .72, m - R * .3, m - R * .74, m, m - R * .6);
+      p.bezierCurveTo(m + R * .3, m - R * .74, m + R * .8, m - R * .72, m + R * .88, m - R * .36);
+      p.bezierCurveTo(m + R * 1, m + R * .1, m + R * .45, m + R * .86, m, m + R * .98);
+      p.closePath();
+      g.fillStyle = skin(g, m, R, '#e22c3c', .35, .55); g.fill(p);
+      for (let row = 0; row < 9; row++) {
+        const y = m - R * .48 + row * R * .17;
+        for (let col = -5; col <= 5; col++) {
+          const x = m + col * R * .19 + (row % 2) * R * .095;
+          if (!g.isPointInPath(p, x, y) || !g.isPointInPath(p, x, y + R * .09)) continue;
+          g.fillStyle = 'rgba(120,10,20,.35)'; g.fill(ell(x, y, R * .05, R * .065));
+          g.fillStyle = '#f5d65c'; g.fill(ell(x, y - R * .005, R * .026, R * .045));
         }
       }
-      disc(g, m, R * .14, 'rgba(255,190,160,.9)');
+      [-2.9, -2.4, -1.9, -1.25, -.75, -.25].forEach(a => leaf(g, m, m - R * .6, R * .46, R * .13, a, '#3f8a2a'));
+      stem(g, m, m - R * .62, m + R * .02, m - R * .85, m + R * .1, m - R * 1.02, R * .09, '#4f7a2a');
     },
-    // 桃子：果肉 + 红晕 + 果核
+    // 葡萄（带果粉的单颗）
     (g, m, R, rnd) => {
-      disc(g, m, R * .93, radial(g, m, R * .2, R * .93, [[0, '#ffcf8a'], [1, '#f7a04e']]));
-      disc(g, m, R * .5, radial(g, m, R * .15, R * .5, [[0, 'rgba(210,55,50,.85)'], [1, 'rgba(210,55,50,0)']]));
-      seed(g, m, m, R * .2, R * .27, 0, '#8a4a2b');
-      g.strokeStyle = 'rgba(60,25,10,.45)'; g.lineWidth = R * .018;
-      for (let i = 0; i < 7; i++) {
-        const y = m - R * .2 + i * R * .066, w = Math.sqrt(Math.max(0, 1 - ((y - m) / (R * .27)) ** 2)) * R * .17;
-        g.beginPath(); g.moveTo(m - w, y + (rnd() - .5) * R * .02); g.quadraticCurveTo(m, y + R * .03, m + w, y); g.stroke();
-      }
+      stem(g, m, m - R * .8, m - R * .02, m - R * .98, m + R * .08, m - R * 1.12, R * .1, '#7b7a3a');
+      const p = ell(m, m + R * .04, R * .87, R * .92);
+      g.fillStyle = skin(g, m, R, '#5b2a86', .35, .6); g.fill(p);
+      speckle(g, p, { x: m - R, y: m - R, w: 2 * R, h: 2 * R }, 40, rnd, (x, y, r) => {
+        g.fillStyle = `rgba(225,215,245,${.05 + r() * .08})`;
+        g.fill(ell(x, y, R * (.12 + r() * .2), R * (.06 + r() * .1), r() * 3));
+      });
+      g.fillStyle = 'rgba(70,40,40,.6)'; g.fill(ell(m, m - R * .83, R * .1, R * .045));
     },
-    // 菠萝：纤维纹 + 浅色芯 + 外圈“果眼”
+    // 橘子
     (g, m, R, rnd) => {
-      disc(g, m, R * .92, radial(g, m, R * .2, R * .92, [[0, '#fde9a0'], [.5, '#f9d34a'], [1, '#e9b418']]));
-      spokes(g, m, 60, R * .24, R * .84, 'rgba(255,248,210,.35)', R * .012, .05, rnd);
-      disc(g, m, R * .22, radial(g, m, 0, R * .22, [[0, '#fff6d2'], [1, '#fbe49a']]));
-      for (let i = 0; i < 22; i++) {
-        const a = i / 22 * TAU;
-        seed(g, m + Math.cos(a) * R * .87, m + Math.sin(a) * R * .87, R * .03, R * .05, a, 'rgba(120,80,20,.55)');
-      }
+      const p = polar(m, m, t => R * (.95 + .015 * Math.sin(t * 7)));
+      g.fillStyle = skin(g, m, R, '#f4880f', .35, .5); g.fill(p);
+      speckle(g, p, { x: m - R, y: m - R, w: 2 * R, h: 2 * R }, 420, rnd, (x, y, r) => {
+        g.fillStyle = r() < .6 ? 'rgba(160,70,0,.22)' : 'rgba(255,225,160,.35)';
+        g.beginPath(); g.arc(x, y, R * (.012 + r() * .014), 0, TAU); g.fill();
+      });
+      leaf(g, m + R * .04, m - R * .9, R * .55, R * .17, -.35, '#3f7f2e');
+      for (let i = 0; i < 5; i++) leaf(g, m, m - R * .9, R * .12, R * .05, i / 5 * TAU, '#6d8a2a');
+      g.fillStyle = '#4f6b1c'; g.beginPath(); g.arc(m, m - R * .9, R * .04, 0, TAU); g.fill();
     },
-    // 椰子：毛壳 + 白色果肉 + 半透明椰汁
+    // 柠檬
     (g, m, R, rnd) => {
-      g.strokeStyle = 'rgba(30,15,5,.35)'; g.lineWidth = R * .012;
-      for (let i = 0; i < 90; i++) {
-        const a = rnd() * TAU, d = R * (.88 + rnd() * .08);
-        g.beginPath(); g.moveTo(m + Math.cos(a) * d, m + Math.sin(a) * d);
-        g.lineTo(m + Math.cos(a + .05) * (d + R * .05), m + Math.sin(a + .05) * (d + R * .05)); g.stroke();
-      }
-      disc(g, m, R * .84, '#f8f4ec');
-      disc(g, m, R * .62, radial(g, m, 0, R * .62, [[0, 'rgba(236,242,244,.95)'], [1, 'rgba(206,220,226,.95)']]));
+      const p = polar(m, m, t => {
+        const c = Math.cos(t), e = R * .97 * R * .8 / Math.hypot(R * .8 * c, R * .97 * Math.sin(t));
+        return e * (1 + .1 * Math.pow(Math.max(0, c), 24) + .08 * Math.pow(Math.max(0, -c), 24));
+      }, -.35);
+      g.fillStyle = skin(g, m, R, '#f2cf1d', .4, .45); g.fill(p);
+      speckle(g, p, { x: m - R * 1.1, y: m - R, w: 2.2 * R, h: 2 * R }, 520, rnd, (x, y, r) => {
+        g.fillStyle = r() < .55 ? 'rgba(170,130,0,.2)' : 'rgba(255,250,200,.4)';
+        g.beginPath(); g.arc(x, y, R * (.01 + r() * .012), 0, TAU); g.fill();
+      });
+      const tx = m + Math.cos(-.35) * R * 1.05, ty = m + Math.sin(-.35) * R * 1.05;
+      g.fillStyle = '#9aa22e'; g.fill(ell(tx, ty, R * .06, R * .045, -.35));
     },
-    // 西瓜：深绿皮 + 白瓤 + 红果肉 + 黑籽
+    // 猕猴桃（毛茸茸）
     (g, m, R, rnd) => {
-      g.strokeStyle = 'rgba(15,50,20,.5)'; g.lineWidth = R * .05;
-      for (let i = 0; i < 16; i++) {
-        const a = i / 16 * TAU;
-        g.beginPath(); g.arc(m, m, R * .95, a, a + .12); g.stroke();
-      }
-      disc(g, m, R * .9, '#d9ecb2');
-      disc(g, m, R * .84, radial(g, m, 0, R * .84, [[0, '#ff8190'], [.7, '#f5485d'], [1, '#e2344b']]));
-      spokes(g, m, 30, R * .1, R * .78, 'rgba(255,220,225,.18)', R * .02, .1, rnd);
-      for (let i = 0; i < 13; i++) {
-        const a = i / 13 * TAU + .2, d = R * (.52 + (i % 2) * .1);
-        seed(g, m + Math.cos(a) * d, m + Math.sin(a) * d, R * .06, R * .035, a, '#1c1410');
-        seed(g, m + Math.cos(a) * d - R * .012, m + Math.sin(a) * d - R * .012, R * .02, R * .01, a, 'rgba(255,255,255,.35)');
-      }
-      for (let i = 0; i < 5; i++) {
-        const a = i / 5 * TAU, d = R * .22;
-        seed(g, m + Math.cos(a) * d, m + Math.sin(a) * d, R * .05, R * .03, a, '#1c1410');
-      }
+      const p = ell(m, m, R * .98, R * .86, .35);
+      g.fillStyle = skin(g, m, R, '#8a6337', .3, .5); g.fill(p);
+      speckle(g, p, { x: m - R, y: m - R, w: 2 * R, h: 2 * R }, 1400, rnd, (x, y, r) => {
+        const a = r() * TAU, l = R * (.025 + r() * .03);
+        g.strokeStyle = r() < .5 ? 'rgba(50,32,14,.28)' : 'rgba(220,190,140,.25)';
+        g.lineWidth = R * .008;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      });
+      const tx = m + Math.cos(.35) * R * .94, ty = m + Math.sin(.35) * R * .94;
+      g.fillStyle = 'rgba(60,40,20,.7)'; g.beginPath(); g.arc(tx, ty, R * .05, 0, TAU); g.fill();
     },
-    // 彩虹果冻：一圈柔和的色带 + 乳白漩涡
+    // 番茄
+    (g, m, R) => {
+      const p = polar(m, m + R * .05, t => R * .93 * (1 + .025 * Math.cos(5 * t)) * (1 - .06 * Math.sin(t) ** 2));
+      g.fillStyle = skin(g, m, R, '#e0301e', .35, .6); g.fill(p);
+      g.save(); g.clip(p);
+      g.strokeStyle = 'rgba(120,10,0,.07)'; g.lineWidth = R * .12; g.lineCap = 'round';
+      [-.5, -.18, .18, .5].forEach(k => {
+        g.beginPath(); g.moveTo(m + k * R * .3, m - R * .72);
+        g.quadraticCurveTo(m + k * R * 1.5, m + R * .1, m + k * R * .5, m + R * .85); g.stroke();
+      });
+      g.restore();
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i - 2.5) * .5;
+        leaf(g, m, m - R * .74, R * .36, R * .07, a + (i < 3 ? -.9 : .9) * .6, '#3f7d23');
+      }
+      stem(g, m, m - R * .74, m + R * .02, m - R * .88, m + R * .06, m - R * .98, R * .08, '#4a7a2a');
+    },
+    // 桃子
+    (g, m, R, rnd) => {
+      const p = polar(m, m + R * .04, t => R * .92 * (1 + .05 * Math.pow(Math.max(0, -Math.sin(t)), 6) - .04 * Math.pow(Math.max(0, -Math.sin(t)), 40)));
+      g.fillStyle = skin(g, m, R, '#f7b068', .35, .45); g.fill(p);
+      g.save(); g.clip(p);
+      g.fillStyle = grad(g, m + R * .3, m - R * .05, 0, R * .95, [[0, 'rgba(225,55,55,.75)'], [.6, 'rgba(225,70,60,.35)'], [1, 'rgba(225,70,60,0)']]);
+      g.fillRect(m - R, m - R, 2 * R, 2 * R);
+      g.strokeStyle = 'rgba(150,40,30,.3)'; g.lineWidth = R * .045; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(m, m - R * .86); g.bezierCurveTo(m - R * .22, m - R * .4, m - R * .22, m + R * .3, m - R * .05, m + R * .8); g.stroke();
+      g.strokeStyle = 'rgba(255,230,200,.35)'; g.lineWidth = R * .03;
+      g.beginPath(); g.moveTo(m + R * .06, m - R * .84); g.bezierCurveTo(m - R * .12, m - R * .4, m - R * .12, m + R * .3, m + R * .04, m + R * .78); g.stroke();
+      g.restore();
+      speckle(g, p, { x: m - R, y: m - R, w: 2 * R, h: 2 * R }, 500, rnd, (x, y, r) => {
+        g.fillStyle = 'rgba(255,240,220,.18)'; g.beginPath(); g.arc(x, y, R * .01, 0, TAU); g.fill();
+      });
+      stem(g, m, m - R * .84, m + R * .02, m - R * .95, m + R * .04, m - R * 1.02, R * .07, '#6b4a2a');
+      leaf(g, m + R * .04, m - R * .96, R * .6, R * .19, -.45, '#4f8a3a');
+    },
+    // 菠萝
+    (g, m, R) => {
+      const cy = m + R * .2;
+      const crown = [[-1.55, .62], [-1.2, .52], [-1.9, .52], [-.95, .4], [-2.2, .4], [-1.38, .72], [-1.72, .7]];
+      crown.forEach(([a, l]) => leaf(g, m, cy - R * .62, R * l, R * .085, a, '#4a8a3a'));
+      const p = ell(m, cy, R * .8, R * .78);
+      g.fillStyle = skin(g, m, R, '#d9a12a', .32, .55); g.fill(p);
+      g.save(); g.clip(p);
+      g.strokeStyle = 'rgba(110,65,10,.45)'; g.lineWidth = R * .028;
+      for (let k = -8; k <= 8; k++) {
+        g.beginPath(); g.moveTo(m + k * R * .22 - R, cy - R); g.lineTo(m + k * R * .22 + R, cy + R); g.stroke();
+        g.beginPath(); g.moveTo(m + k * R * .22 + R, cy - R); g.lineTo(m + k * R * .22 - R, cy + R); g.stroke();
+      }
+      for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) {
+        const x = m + (i + j) * R * .11, y = cy + (j - i) * R * .11 + R * .11;
+        g.fillStyle = 'rgba(110,60,10,.6)'; g.beginPath(); g.arc(x, y, R * .028, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(255,230,150,.35)'; g.beginPath(); g.arc(x - R * .02, y - R * .03, R * .02, 0, TAU); g.fill();
+      }
+      g.restore();
+    },
+    // 椰子
+    (g, m, R, rnd) => {
+      const p = polar(m, m, t => R * .95 * (1 + .03 * Math.sin(3 * t + 1)));
+      g.fillStyle = skin(g, m, R, '#6a4326', .3, .6); g.fill(p);
+      speckle(g, p, { x: m - R, y: m - R, w: 2 * R, h: 2 * R }, 700, rnd, (x, y, r) => {
+        const a = Math.atan2(y - m, x - m) + Math.PI / 2 + (r() - .5) * .8, l = R * (.05 + r() * .09);
+        g.strokeStyle = r() < .5 ? 'rgba(35,18,6,.35)' : 'rgba(180,130,80,.22)';
+        g.lineWidth = R * (.006 + r() * .008);
+        g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * l * .5 + R * .01, y + Math.sin(a) * l * .5, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      });
+      [[-.16, -.5], [.16, -.5], [0, -.3]].forEach(([dx, dy]) => {
+        g.fillStyle = 'rgba(25,12,4,.8)'; g.fill(ell(m + dx * R, m + dy * R, R * .07, R * .06));
+        g.fillStyle = 'rgba(160,110,70,.4)'; g.fill(ell(m + dx * R - R * .015, m + dy * R - R * .015, R * .025, R * .02));
+      });
+    },
+    // 大西瓜
+    (g, m, R) => {
+      const cy = m + R * .04, p = ell(m, cy, R * .98, R * .9);
+      g.fillStyle = skin(g, m, R, '#4a9d45', .32, .55); g.fill(p);
+      g.save(); g.clip(p);
+      g.strokeStyle = 'rgba(20,70,25,.85)'; g.lineJoin = 'round'; g.lineCap = 'round';
+      for (let s = -4; s <= 4; s++) {
+        g.lineWidth = R * .11 * (1 - Math.abs(s) * .12);
+        g.beginPath();
+        for (let k = 0; k <= 40; k++) {
+          const yy = -1 + k / 20, w = Math.sqrt(Math.max(0, 1 - yy * yy));
+          const x = m + (s / 4.3) * R * .98 * w + Math.sin(yy * 16 + s * 2) * R * .035 * w;
+          const y = cy + yy * R * .9;
+          k ? g.lineTo(x, y) : g.moveTo(x, y);
+        }
+        g.stroke();
+      }
+      g.restore();
+      stem(g, m, cy - R * .88, m + R * .02, cy - R * .98, m + R * .1, cy - R * 1.04, R * .06, '#6b7a36');
+    },
+    // 彩虹果冻（糖球）
     (g, m, R) => {
       for (let i = 0; i < 12; i++) {
         g.beginPath(); g.moveTo(m, m);
-        g.arc(m, m, R * .92, i / 12 * TAU, (i + 1) / 12 * TAU + .01); g.closePath();
-        g.fillStyle = `hsl(${i * 30},85%,72%)`; g.fill();
+        g.arc(m, m, R * .94, i / 12 * TAU, (i + 1) / 12 * TAU + .01); g.closePath();
+        g.fillStyle = `hsl(${i * 30},85%,70%)`; g.fill();
       }
-      disc(g, m, R * .92, radial(g, m, R * .1, R * .92, [[0, 'rgba(255,255,255,.95)'], [.55, 'rgba(255,255,255,.35)'], [1, 'rgba(255,255,255,0)']]));
-      g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = R * .06; g.lineCap = 'round';
+      g.fillStyle = grad(g, m, m, R * .1, R * .94, [[0, 'rgba(255,255,255,.95)'], [.55, 'rgba(255,255,255,.3)'], [1, 'rgba(255,255,255,0)']]);
+      g.beginPath(); g.arc(m, m, R * .94, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = R * .06; g.lineCap = 'round';
       g.beginPath();
       for (let t = 0; t < 1; t += .02) {
         const a = t * TAU * 1.6, d = R * (.1 + t * .6);
@@ -440,86 +581,85 @@
       }
       g.stroke();
     },
-    // 榴莲：整颗带刺
+    // 榴莲
     (g, m, R, rnd) => {
-      disc(g, m, R * .95, radial(g, m, R * .1, R * .95, [[0, '#b7bf5a'], [1, '#6b7626']]));
-      for (let ring = 0; ring < 4; ring++) {
-        const d = R * (.2 + ring * .22), n = 6 + ring * 7;
+      const p = polar(m, m, t => R * (.84 + .12 * Math.pow(Math.abs(Math.sin(t * 11)), 3)));
+      g.fillStyle = skin(g, m, R, '#8c9a34', .35, .55); g.fill(p);
+      for (let ring = 0; ring < 3; ring++) {
+        const d = R * (.18 + ring * .24), n = 6 + ring * 7;
         for (let i = 0; i < n; i++) {
-          const a = i / n * TAU + ring * .3 + rnd() * .1, x = m + Math.cos(a) * d, y = m + Math.sin(a) * d;
-          const s = R * (.1 - ring * .012);
+          const a = i / n * TAU + ring * .3 + rnd() * .1, x = m + Math.cos(a) * d, y = m + Math.sin(a) * d, s = R * .1;
           g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * .85, y + s * .55); g.lineTo(x - s * .85, y + s * .55); g.closePath();
-          g.fillStyle = 'rgba(70,80,20,.55)'; g.fill();
+          g.fillStyle = 'rgba(60,70,15,.5)'; g.fill();
           g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * .3, y); g.lineTo(x - s * .3, y); g.closePath();
-          g.fillStyle = 'rgba(240,245,180,.4)'; g.fill();
+          g.fillStyle = 'rgba(240,245,180,.45)'; g.fill();
         }
       }
+      stem(g, m, m - R * .8, m + R * .02, m - R * .95, m + R * .08, m - R * 1.08, R * .1, '#6b5a2a');
     },
   ];
 
   function buildSprites() {
     const k = sc * dpr;
     sprites = FRUITS.map((f, l) => {
-      const R = f.r * k, pad = R * .3 + 4 * k, size = Math.ceil(2 * (R + pad)), m = size / 2;
+      const R = f.r * k, pad = R * .5 + 4 * k, size = Math.ceil(2 * (R + pad)), m = size / 2;
       const layer = draw => {
         const c = document.createElement('canvas');
         c.width = c.height = size;
-        const g = c.getContext('2d');
-        draw(g);
+        draw(c.getContext('2d'));
         return c;
       };
-      const circle = g => { g.beginPath(); g.arc(m, m, R, 0, TAU); };
 
+      // 接触阴影
       const base = layer(g => {
-        // 果冻透光投下的彩色光斑 + 接触阴影
-        g.save(); g.translate(m + R * .08, m + R * .95); g.scale(1, .2);
-        g.fillStyle = radial(g, 0, 0, R * 1.05, [[0, rgba(f.j, .3)], [1, rgba(f.j, 0)]]);
-        g.beginPath(); g.arc(0, 0, R * 1.05, 0, TAU); g.fill();
-        g.fillStyle = radial(g, 0, 0, R * .7, [[0, 'rgba(50,30,15,.26)'], [1, 'rgba(50,30,15,0)']]);
-        g.beginPath(); g.arc(0, 0, R * .7, 0, TAU); g.fill();
+        g.save(); g.translate(m + R * .05, m + R * .95); g.scale(1, .2);
+        g.fillStyle = grad(g, 0, 0, 0, R * .8, [[0, 'rgba(50,30,15,.3)'], [1, 'rgba(50,30,15,0)']]);
+        g.beginPath(); g.arc(0, 0, R * .8, 0, TAU); g.fill();
         g.restore();
-        // 外皮
-        const body = g.createRadialGradient(m - R * .3, m - R * .4, R * .05, m, m, R);
-        body.addColorStop(0, shade(f.c, .35));
-        body.addColorStop(.75, f.c);
-        body.addColorStop(1, shade(f.c, -.25));
-        circle(g); g.fillStyle = body; g.fill();
       });
 
-      const detail = layer(g => {
-        g.globalAlpha = .94;
-        DETAILS[l](g, m, R, seeded(l * 97 + 13));
+      const detail = layer(g => PAINT[l](g, m, R, seeded(l * 97 + 13)));
+
+      // 金色版本：保留纹理，只换成金色
+      let gold = null;
+      if (l <= MAX) gold = layer(g => {
+        g.drawImage(detail, 0, 0);
+        g.globalCompositeOperation = 'source-atop';
+        g.fillStyle = 'rgba(232,180,40,.55)'; g.fillRect(0, 0, size, size);
+        g.globalCompositeOperation = 'color';
+        g.fillStyle = 'rgba(225,170,30,.7)'; g.fillRect(0, 0, size, size);
+        g.globalCompositeOperation = 'source-atop';
+        g.fillStyle = grad(g, m - R * .3, m - R * .35, 0, R, [[0, 'rgba(255,245,200,.45)'], [1, 'rgba(255,245,200,0)']]);
+        g.fillRect(0, 0, size, size);
+        // “color” 混合会画到透明区域，最后按原形状裁一次
+        g.globalCompositeOperation = 'destination-in';
+        g.drawImage(detail, 0, 0);
       });
 
+      // 固定光照层：方向光 + 高光（不随滚动旋转），只覆盖形状内切圆
+      const C = R * f.core;
       const gloss = layer(g => {
-        g.save(); circle(g); g.clip();
-        // 体积感：背光一侧边缘变暗
-        const vol = g.createRadialGradient(m - R * .25, m - R * .3, R * .2, m, m, R * 1.02);
-        vol.addColorStop(0, 'rgba(40,20,10,0)'); vol.addColorStop(.72, 'rgba(40,20,10,0)'); vol.addColorStop(1, 'rgba(40,20,10,.3)');
-        g.fillStyle = vol; g.fillRect(0, 0, size, size);
-        // 次表面散射：光从底部透出来
-        const sss = g.createRadialGradient(m + R * .15, m + R * .62, 0, m + R * .15, m + R * .62, R * .6);
-        sss.addColorStop(0, 'rgba(255,255,255,.3)'); sss.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = sss; g.fillRect(0, 0, size, size);
+        g.fillStyle = grad(g, m - R * .35, m - R * .42, 0, R * 1.5, [[0, 'rgba(255,250,240,.2)'], [.42, 'rgba(0,0,0,0)'], [1, 'rgba(25,12,4,.5)']]);
+        g.fillRect(0, 0, size, size);
+        g.globalCompositeOperation = 'destination-in';
+        g.fillStyle = grad(g, m, m, C * .72, C, [[0, '#000'], [1, 'rgba(0,0,0,0)']]);
+        g.fillRect(0, 0, size, size);
+        g.globalCompositeOperation = 'source-over';
+        const gl = f.gloss;
+        g.save(); g.translate(m - C * .38, m - C * .45); g.rotate(-.6); g.scale(1, .6);
+        g.fillStyle = grad(g, 0, 0, 0, C * .5, [[0, `rgba(255,255,255,${.1 + .45 * gl})`], [1, 'rgba(255,255,255,0)']]);
+        g.beginPath(); g.arc(0, 0, C * .5, 0, TAU); g.fill();
         g.restore();
-        // 大片柔光
-        g.save(); g.translate(m - R * .3, m - R * .42); g.rotate(-.55); g.scale(1, .55);
-        g.fillStyle = radial(g, 0, 0, R * .5, [[0, 'rgba(255,255,255,.72)'], [.6, 'rgba(255,255,255,.18)'], [1, 'rgba(255,255,255,0)']]);
-        g.beginPath(); g.arc(0, 0, R * .5, 0, TAU); g.fill();
-        g.restore();
-        // 窗形高光
-        seed(g, m - R * .44, m - R * .5, R * .13, R * .07, -.65, 'rgba(255,255,255,.92)');
-        seed(g, m - R * .22, m - R * .66, R * .04, R * .025, -.4, 'rgba(255,255,255,.8)');
-        // 边缘轮廓光
-        g.lineCap = 'round';
-        g.beginPath(); g.arc(m, m, R * .955, Math.PI * 1.05, Math.PI * 1.45);
-        g.lineWidth = R * .035; g.strokeStyle = 'rgba(255,255,255,.55)'; g.stroke();
-        g.beginPath(); g.arc(m, m, R * .89, Math.PI * .15, Math.PI * .7);
-        g.lineWidth = R * .05; g.strokeStyle = 'rgba(255,255,255,.28)'; g.stroke();
-        circle(g); g.lineWidth = Math.max(1, R * .02); g.strokeStyle = 'rgba(30,15,5,.14)'; g.stroke();
+        if (gl > .3) {
+          g.fillStyle = `rgba(255,255,255,${.9 * gl})`; g.fill(ell(m - C * .44, m - C * .5, C * .13, C * .07, -.65));
+          g.fillStyle = `rgba(255,255,255,${.7 * gl})`; g.fill(ell(m - C * .2, m - C * .68, C * .04, C * .025, -.4));
+        }
+        // 地面反光：底部一层很淡的亮光
+        g.fillStyle = grad(g, m + C * .25, m + C * .7, 0, C * .5, [[0, `rgba(255,248,235,${.08 + .12 * gl})`], [1, 'rgba(255,248,235,0)']]);
+        g.fillRect(0, 0, size, size);
       });
 
-      return { base, detail, gloss, size: size / k };
+      return { base, detail, gold, gloss, size: size / k, px: size, R };
     });
   }
 
@@ -551,9 +691,14 @@
   }
   const sfx = {
     drop() { tone(260, 140, .12, 'sine', .2); },
-    merge(l) { const f = NOTES[l]; tone(f, f * 1.5, .16, 'triangle', .22); tone(f * 2, f * 2.5, .1, 'sine', .06, .03); },
+    merge(l, gold) {
+      const f = NOTES[l];
+      tone(f, f * 1.5, .16, 'triangle', .22); tone(f * 2, f * 2.5, .1, 'sine', .06, .03);
+      if (gold) [1.5, 2, 2.5].forEach((k, i) => tone(f * k, f * k * 1.02, .12, 'sine', .06, .06 + i * .05));
+    },
     win() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, .35, 'triangle', .22, i * .11)); },
     over() { tone(440, 110, .7, 'sawtooth', .08); },
+    blend() { for (let i = 0; i < 10; i++) tone(180 + i * 25, 220 + i * 25, .09, 'sawtooth', .04, i * .08); },
   };
   function unlockAudio() {
     try {
@@ -565,10 +710,11 @@
 
   // ---------- 游戏状态 ----------
   let bodies = [], parts = [], floats = [], fireworks = [];
-  let score = 0, shownScore = 0, cur = 0, next = 0, aimX = W / 2, aiming = false;
+  let score = 0, shownScore = 0, cur = { l: 0 }, next = { l: 0 }, aimX = W / 2, aiming = false;
   let cooldown = 0, dangerT = 0, maxLvl = 0, banner = null, shake = 0;
-  let over = true, demo = true, demoT = 0, dropped = 0, time = 0;
-  let combo = 0, lastMerge = -9, juice = 0, layers = [], juiceReady = false, tapJar = false;
+  let over = true, demo = true, demoT = 0, dropped = 0, time = 0, paused = false;
+  let combo = 0, lastMerge = -9, juice = 0, layers = [], tapJar = false;
+  let fx = { double: 0, freeze: 0, lowg: 0 }, queue = [];
   const JAR = { x: W / 2 - 17, y: 30, w: 34, h: 50 };
 
   function randLevel() {
@@ -581,37 +727,42 @@
     const pool = [0, 0, 0, 1, 1, 1, 2, 2, 3, 4];
     return pool[(Math.random() * pool.length) | 0];
   }
+  function pickNext() {
+    const l = queue.length ? queue.shift() : randLevel();
+    return { l, gold: l <= MAX && dropped >= 5 && Math.random() < .045 };
+  }
 
-  function makeBody(l, x, y, vx, vy) {
+  function makeBody(l, x, y, vx, vy, gold) {
     const r = FRUITS[l].r;
-    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false, sq: 0, sv: 0, ang: Math.PI / 2, fuse: -1 };
+    return { l, x, y, vx, vy, r, tr: r, gr: 0, a: rand(-.4, .4), t: 0, dead: false, sq: 0, sv: 0, ang: Math.PI / 2, fuse: -1, gold: !!gold };
   }
 
   function reset(asDemo) {
     bodies = []; parts = []; floats = []; fireworks = [];
     score = shownScore = 0; dropped = 0; maxLvl = 0; dangerT = 0; banner = null; cooldown = 0;
-    combo = 0; lastMerge = -9; juice = 0; layers = []; juiceReady = false;
-    demo = asDemo; over = asDemo;
-    cur = randLevel(); dropped = 1; next = randLevel(); dropped = 0;
+    combo = 0; lastMerge = -9; juice = 0; layers = [];
+    fx = { double: 0, freeze: 0, lowg: 0 }; queue = [];
+    demo = asDemo; over = asDemo; paused = false;
+    cur = pickNext(); dropped = 1; next = pickNext(); dropped = 0;
     document.title = '合成大西瓜';
   }
 
   function drop(x) {
-    if (over || cooldown > 0) return;
-    const r = FRUITS[cur].r;
-    bodies.push(makeBody(cur, clamp(x, r, W - r), HOVER_Y, 0, 0));
+    if (over || paused || cooldown > 0) return;
+    const r = FRUITS[cur.l].r;
+    bodies.push(makeBody(cur.l, clamp(x, r, W - r), HOVER_Y, 0, 0, cur.gold));
     sfx.drop();
-    if (discover(cur) && cur > MAX) showNew(cur);
+    if (discover(cur.l, cur.gold) && cur.l > MAX) showNew(cur.l);
     dropped++;
-    cur = next; next = randLevel();
+    cur = next; next = pickNext();
     cooldown = .45;
   }
 
   // ---------- 物理（速度冲量 + 位置修正，堆叠稳定） ----------
   function step(dt) {
-    const n = bodies.length, merges = [];
+    const n = bodies.length, merges = [], g = G * (fx.lowg > 0 ? .3 : 1);
     for (const b of bodies) {
-      b.vy += G * dt;
+      b.vy += g * dt;
       if (b.r < b.tr) b.r = Math.min(b.tr, b.r + b.gr * dt);
       const K = 520 * Math.sqrt(40 / b.r);
       b.sv += (-K * b.sq - 5.5 * b.sv) * dt;
@@ -701,9 +852,10 @@
     if (merges.length) {
       bodies = bodies.filter(b => !b.dead);
       for (const [a, b, rainbow] of merges) {
+        const gold = a.gold || b.gold;
         const m = rainbow
-          ? makeBody(a.l + 1, a.x, a.y, a.vx, a.vy)
-          : makeBody(a.l + 1, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.vx + b.vx) / 2, (a.vy + b.vy) / 2);
+          ? makeBody(a.l + 1, a.x, a.y, a.vx, a.vy, a.gold)
+          : makeBody(a.l + 1, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.vx + b.vx) / 2, (a.vy + b.vy) / 2, gold);
         if (rainbow) for (let i = 0; i < 24; i++) {
           const an = rand(0, TAU), sp = rand(100, 300);
           parts.push({ x: b.x, y: b.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: rand(.5, .9), max: .9,
@@ -723,104 +875,169 @@
     if (amt > b.sq) { b.sq = amt; b.sv = 0; b.ang = ang; }
   }
 
+  function splash(x, y, l, n, spread) {
+    const f = FRUITS[l];
+    for (let i = 0; i < n; i++) {
+      const an = rand(0, TAU), sp = rand(100, spread || 300);
+      parts.push({ x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 120, life: rand(.4, .8), max: .8,
+        size: rand(2, 4 + Math.min(l, MAX) * .35), color: i % 3 ? f.j : f.c, g: 900 });
+    }
+  }
+  function sparkle(x, y, r) {
+    for (let i = 0; i < 14; i++) {
+      const an = rand(0, TAU), d = rand(0, r);
+      parts.push({ x: x + Math.cos(an) * d, y: y + Math.sin(an) * d, vx: 0, vy: -rand(20, 60), life: rand(.6, 1.1), max: 1.1,
+        size: rand(1.5, 3), color: '#ffe38a', g: 0, star: true });
+    }
+  }
+
   function onMerge(m) {
     m.sq = -.2; m.sv = 0; m.ang = Math.PI / 2;
-    const f = FRUITS[m.l];
-    for (let i = 0; i < 8 + m.l * 2; i++) {
-      const ang = rand(0, Math.PI * 2), sp = rand(120, 320 + m.l * 25);
-      parts.push({ x: m.x, y: m.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 120,
-        life: rand(.4, .8), max: .8, size: rand(2, 4 + m.l * .35), color: i % 3 ? f.j : f.c, g: 900 });
-    }
+    splash(m.x, m.y, m.l, 8 + m.l * 2, 320 + m.l * 25);
+    if (m.gold) sparkle(m.x, m.y, m.r);
     if (demo || over) return;
     combo = time - lastMerge < 1.1 ? combo + 1 : 1;
     lastMerge = time;
-    const pts = Math.round(POINTS[m.l] * (1 + (combo - 1) * .5));
+    const mult = (1 + (combo - 1) * .5) * (m.gold ? 3 : 1) * (fx.double > 0 ? 2 : 1);
+    const pts = Math.round(POINTS[m.l] * mult);
     score += pts;
-    floats.push({ x: m.x, y: m.y - m.r * .3, text: combo > 1 ? `+${pts}  ×${combo}` : '+' + pts, life: 1 });
-    sfx.merge(m.l);
+    const tags = [combo > 1 ? '×' + combo : '', m.gold ? '金' : ''].filter(Boolean).join(' ');
+    floats.push({ x: m.x, y: m.y - m.r * .3, text: tags ? `+${pts}  ${tags}` : '+' + pts, life: 1, gold: m.gold });
+    sfx.merge(m.l, m.gold);
     vibrate(12);
-    addJuice(f.j, (.035 + m.l * .012) * (1 + (combo - 1) * .3));
-    const first = discover(m.l);
+    addJuice(FRUITS[m.l].j, (.035 + m.l * .012) * (1 + (combo - 1) * .3));
+    const first = discover(m.l, m.gold);
     if (m.l > maxLvl) maxLvl = m.l;
     if (m.l === MAX) celebrate();
     else if (first && m.l >= 3) showNew(m.l);
+    else if (m.gold && dex.gold[m.l] === 1) showBanner('GOLDEN SPECIMEN · 金色标本', `金色${FRUITS[m.l].n}`);
   }
 
+  function showBanner(kicker, text, life, big) {
+    banner = { kicker, text, life: life || 1.9, max: life || 1.9, big };
+  }
   function showNew(l) {
-    banner = { kicker: 'NEW SPECIMEN · 已收录图鉴', text: `${dexNo(l)}  ${FRUITS[l].n}`, life: 2, max: 2 };
+    showBanner('NEW SPECIMEN · 已收录图鉴', `${dexNo(l)}  ${FRUITS[l].n}`, 2);
     tone(880, 1320, .25, 'sine', .12); tone(1320, 1760, .3, 'sine', .08, .12);
   }
 
-  // ---------- 榨汁机 ----------
+  // ---------- 能量瓶 ----------
   function addJuice(color, amt) {
-    if (juiceReady) return;
+    if (juice >= .999) return;
     amt = Math.min(amt, 1 - juice);
     const top = layers[layers.length - 1];
     if (top && top.c === color) top.v += amt; else layers.push({ c: color, v: amt });
     juice += amt;
     if (juice >= .999) {
-      juiceReady = true;
-      banner = { kicker: 'JUICER READY · 果汁满了', text: '点顶部的瓶子榨汁', life: 1.8, max: 1.8 };
+      showBanner('ENERGY FULL · 能量满了', '点顶部的瓶子榨汁');
       [660, 880, 1100].forEach((fq, i) => tone(fq, fq, .18, 'triangle', .1, i * .08));
     }
   }
 
-  function juicer() {
-    const victims = bodies.filter(b => b.l <= 1);
-    bodies = bodies.filter(b => b.l > 1);
-    let gain = 0;
-    for (const v of victims) {
-      gain += 4;
-      for (let i = 0; i < 8; i++) {
-        const an = rand(0, TAU), sp = rand(80, 260);
-        parts.push({ x: v.x, y: v.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 150, life: rand(.4, .8), max: .8,
-          size: rand(2, 4), color: FRUITS[v.l].j, g: 900 });
-      }
-    }
-    score += gain;
-    juice = 0; layers = []; juiceReady = false;
-    banner = { kicker: 'JUICER · 榨汁机', text: victims.length ? `鲜榨 ${victims.length} 颗  +${gain}` : '空榨了一杯', life: 1.6, max: 1.6 };
-    [520, 440, 360, 300].forEach((fq, i) => tone(fq, fq * .7, .12, 'sine', .15, i * .07));
-    vibrate(30);
-  }
-
-  // ---------- 榴莲 ----------
-  function explode(d) {
-    d.dead = true;
+  // ---------- 冲击波（榴莲、榴莲奶昔） ----------
+  function blast(x, y, radius, clearMax, push) {
     let gain = 0;
     for (const o of bodies) {
-      if (o === d || o.dead) continue;
-      const dx = o.x - d.x, dy = o.y - d.y, dist = Math.hypot(dx, dy) || 1;
-      if (dist - o.r > 120) continue;
-      if (o.l <= 3 || o.l === RAINBOW) {
+      if (o.dead) continue;
+      const dx = o.x - x, dy = o.y - y, dist = Math.hypot(dx, dy) || 1;
+      if (dist - o.r > radius) continue;
+      if (o.l <= clearMax || o.l === RAINBOW) {
         o.dead = true; gain += 2;
-        for (let i = 0; i < 6; i++) {
-          const an = rand(0, TAU), sp = rand(100, 280);
-          parts.push({ x: o.x, y: o.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 100, life: rand(.4, .7), max: .7,
-            size: rand(2, 4), color: FRUITS[o.l].j, g: 900 });
-        }
+        splash(o.x, o.y, o.l, 6, 280);
       } else {
-        const k = 700 * (1 - Math.min(1, (dist - o.r) / 120)) / Math.sqrt(o.r / 40);
+        const k = push * (1 - Math.min(1, (dist - o.r) / radius)) / Math.sqrt(o.r / 40);
         o.vx += dx / dist * k; o.vy += dy / dist * k - 150;
       }
     }
     bodies = bodies.filter(b => !b.dead);
     for (let i = 0; i < 14; i++) {
       const an = rand(0, TAU), sp = rand(20, 90);
-      parts.push({ x: d.x + rand(-20, 20), y: d.y + rand(-20, 20), vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 30,
+      parts.push({ x: x + rand(-20, 20), y: y + rand(-20, 20), vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 30,
         life: rand(1, 1.6), max: 1.6, size: rand(14, 30), color: 'rgba(170,185,70,.35)', g: -40, cloud: true });
-    }
-    if (!demo && !over) {
-      score += gain;
-      floats.push({ x: d.x, y: d.y - 20, text: gain ? `臭！ +${gain}` : '臭！', life: 1.2 });
     }
     shake = .35;
     tone(140, 40, .45, 'sine', .4); tone(90, 30, .5, 'triangle', .2, .02);
     vibrate([40, 30, 60]);
+    return gain;
+  }
+  function explode(d) {
+    d.dead = true;
+    const gain = blast(d.x, d.y, 120, 3, 700);
+    if (!demo && !over) {
+      score += gain;
+      floats.push({ x: d.x, y: d.y - 20, text: gain ? `臭！ +${gain}` : '臭！', life: 1.2 });
+    }
+  }
+
+  // ---------- 果汁配方 ----------
+  const JUICES = {
+    0: ['莓果汁', '清空场上所有樱桃和草莓。'],
+    1: ['草莓汁', '清空场上所有樱桃和草莓。'],
+    2: ['葡萄汁', '摇一摇：所有水果被抛起来重新落下。'],
+    3: ['鲜橙汁', '酸得一缩：最靠近警戒线的 3 个水果缩小一级。'],
+    4: ['柠檬水', '酸得一缩：最靠近警戒线的 3 个水果缩小一级。'],
+    5: ['猕猴桃汁', '摇一摇：所有水果被抛起来重新落下。'],
+    6: ['番茄汁', '接下来 3 次掉落都是彩虹果冻。'],
+    7: ['蜜桃乌龙', '15 秒内，合成得分翻倍。'],
+    8: ['菠萝冰', '冻结警戒线 15 秒，堆多高都不会输。'],
+    9: ['椰子水', '12 秒低重力，水果慢慢飘落。'],
+    10: ['西瓜汁', '清空所有桃子以下的水果。'],
+    [RAINBOW]: ['彩虹特调', '场上最小的 4 个水果各升一级。'],
+    [DURIAN]: ['榴莲奶昔', '全场冲击波：清空葡萄以下的水果，其余被震飞。'],
+  };
+  function recipe(ings) {
+    if (!ings.length) return null;
+    const key = ings.includes(DURIAN) ? DURIAN : ings.includes(RAINBOW) ? RAINBOW : Math.max(...ings);
+    const distinct = new Set(ings).size;
+    const base = ings.reduce((s, l) => s + (l <= MAX ? POINTS[l] + 5 : 30), 0);
+    const pts = Math.round(base * [1, 1.5, 2][distinct - 1]);
+    let r = 0, g = 0, b = 0;
+    ings.forEach(l => { const n = parseInt(FRUITS[l].j.slice(1), 16); r += n >> 16; g += (n >> 8) & 255; b += n & 255; });
+    const k = ings.length, color = '#' + [r, g, b].map(v => Math.round(v / k).toString(16).padStart(2, '0')).join('');
+    const [name, desc] = JUICES[key];
+    return { key, name: distinct > 1 ? '混合' + name : name, desc, pts, color, distinct };
+  }
+  function applyJuice(rc) {
+    const k = rc.key;
+    let extra = 0;
+    if (k <= 1) {
+      bodies.filter(b => b.l <= 1).forEach(b => { b.dead = true; extra += 4; splash(b.x, b.y, b.l, 8); });
+    } else if (k === 2 || k === 5) {
+      bodies.forEach(b => { b.vx += rand(-350, 350); b.vy -= rand(350, 750) / Math.sqrt(b.r / 40); });
+      shake = .4;
+    } else if (k === 3 || k === 4) {
+      bodies.filter(b => b.l >= 1 && b.l <= MAX).sort((a, b) => (a.y - a.r) - (b.y - b.r)).slice(0, 3).forEach(b => {
+        b.l--; b.r = b.tr = FRUITS[b.l].r; b.gr = 0; b.sq = .25; splash(b.x, b.y, b.l + 1, 10);
+      });
+    } else if (k === 6) {
+      queue.push(RAINBOW, RAINBOW, RAINBOW);
+      next = pickNext();
+    } else if (k === 7) fx.double = 15;
+    else if (k === 8) fx.freeze = 15;
+    else if (k === 9) fx.lowg = 12;
+    else if (k === 10) {
+      bodies.filter(b => b.l <= 6 || b.l > MAX).forEach(b => { b.dead = true; extra += 4; splash(b.x, b.y, b.l, 8); });
+      celebrateSmall();
+    } else if (k === RAINBOW) {
+      bodies.filter(b => b.l < MAX).sort((a, b) => a.l - b.l).slice(0, 4).forEach(b => {
+        b.l++; b.tr = FRUITS[b.l].r; b.gr = (b.tr - b.r) / .15; b.sq = -.2;
+        sparkle(b.x, b.y, b.r); discover(b.l, b.gold);
+        if (b.l > maxLvl) maxLvl = b.l;
+      });
+    } else if (k === DURIAN) {
+      extra += blast(W / 2, FLOOR - 60, 520, 2, 900);
+    }
+    bodies = bodies.filter(b => !b.dead);
+    score += rc.pts + extra;
+    showBanner('JUICE · ' + rc.name, `+${rc.pts + extra}`, 2.2);
+    floats.push({ x: W / 2, y: 356, text: rc.desc, life: 2.2, small: true });
+  }
+  function celebrateSmall() {
+    for (let i = 0; i < 3; i++) fireworks.push({ t: i * .25, x: rand(80, W - 80), y: rand(200, 360) });
   }
 
   function celebrate() {
-    banner = { kicker: `THE WATERMELON · ${no(MAX)}`, text: '合成大西瓜', life: 3.4, max: 3.4, big: true };
+    showBanner(`THE WATERMELON · ${no(MAX)}`, '合成大西瓜', 3.4, true);
     shake = .5;
     sfx.win();
     vibrate([30, 40, 30, 40, 60]);
@@ -829,10 +1046,10 @@
 
   function burst(x, y) {
     for (let i = 0; i < 46; i++) {
-      const ang = (i / 46) * Math.PI * 2, sp = rand(140, 300);
+      const ang = (i / 46) * TAU, sp = rand(140, 300);
       parts.push({ x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
         life: rand(1, 1.5), max: 1.5, size: rand(2.5, 4.5),
-        color: FRUITS[(Math.random() * FRUITS.length) | 0].j, g: 180 });
+        color: FRUITS[(Math.random() * NF) | 0].j, g: 180 });
     }
     tone(180, 60, .25, 'sine', .15);
   }
@@ -842,10 +1059,9 @@
     sfx.over();
     vibrate(200);
     if (score > best) { best = score; store.set('xigua-best', best); }
-    const f = FRUITS[maxLvl];
     $('finalScore').textContent = score;
     $('finalBest').textContent = score >= best && score > 0 ? best + ' · 新纪录' : best;
-    $('finalFruit').textContent = f.n;
+    $('finalFruit').textContent = FRUITS[maxLvl].n;
     $('finalMsg').textContent =
       maxLvl >= MAX ? '大西瓜，终于合成了。' :
       maxLvl >= 9 ? '只差最后一步。' :
@@ -857,18 +1073,20 @@
 
   // ---------- 更新 ----------
   function update(dt) {
+    if (paused) return;
     time += dt;
     let acc = dt;
     while (acc > 1e-6) { const s = Math.min(STEP, acc); step(s); acc -= s; }
 
     if (cooldown > 0) cooldown -= dt;
     if (shake > 0) shake -= dt;
+    for (const k in fx) if (fx[k] > 0) fx[k] = Math.max(0, fx[k] - dt);
     shownScore += (score - shownScore) * Math.min(1, dt * 10);
     if (Math.abs(score - shownScore) < .5) shownScore = score;
 
     for (const p of parts) { p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .99; p.life -= dt; }
     parts = parts.filter(p => p.life > 0);
-    for (const f of floats) { f.y -= 50 * dt; f.life -= dt; }
+    for (const f of floats) { f.y -= (f.small ? 12 : 50) * dt; f.life -= dt; }
     floats = floats.filter(f => f.life > 0);
     for (const fw of fireworks) { fw.t -= dt; if (fw.t <= 0) burst(fw.x, fw.y); }
     fireworks = fireworks.filter(fw => fw.t > 0);
@@ -878,6 +1096,11 @@
       if (b.l !== DURIAN) continue;
       if (b.fuse < 0 && b.t > .5) b.fuse = 1.3;
       if (b.fuse >= 0 && (b.fuse -= dt) <= 0) { explode(b); break; }
+    }
+    // 金色水果偶尔闪一下
+    for (const b of bodies) if (b.gold && Math.random() < dt * 2) {
+      const an = rand(0, TAU), d = rand(0, b.r * .8);
+      parts.push({ x: b.x + Math.cos(an) * d, y: b.y + Math.sin(an) * d, vx: 0, vy: -20, life: .7, max: .7, size: rand(1.5, 2.5), color: '#fff3b0', g: 0, star: true });
     }
 
     if (demo) {
@@ -889,7 +1112,7 @@
         if (bodies.some(b => b.t > 1.5 && b.y - b.r < DEAD + 40)) bodies = [];
       }
     } else if (!over) {
-      if (bodies.some(b => b.t > 1.2 && b.y - b.r < DEAD)) {
+      if (fx.freeze <= 0 && bodies.some(b => b.t > 1.2 && b.y - b.r < DEAD)) {
         dangerT += dt;
         if (dangerT > 1.8) gameOver();
       } else dangerT = 0;
@@ -897,7 +1120,7 @@
   }
 
   // ---------- 绘制 ----------
-  function drawFruit(l, x, y, r, a, alpha, sq, ang) {
+  function drawFruit(l, x, y, r, a, alpha, sq, ang, gold) {
     const sp = sprites[l], sz = sp.size * r / FRUITS[l].r, h = sz / 2;
     ctx.save();
     ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -905,7 +1128,7 @@
     if (sq) { ctx.rotate(ang); ctx.scale(1 - sq, 1 + sq * .75); ctx.rotate(-ang); }
     ctx.drawImage(sp.base, -h, -h, sz, sz);
     ctx.rotate(a);
-    ctx.drawImage(sp.detail, -h, -h, sz, sz);
+    ctx.drawImage(gold && sp.gold ? sp.gold : sp.detail, -h, -h, sz, sz);
     ctx.rotate(-a);
     ctx.drawImage(sp.gloss, -h, -h, sz, sz);
     ctx.restore();
@@ -919,120 +1142,10 @@
     ctx.fillText(str, x, y);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
-  const label = (str, x, y, align) => text(str, x, y, { size: 9, spacing: 2.2, color: 'rgba(31,27,22,.45)', align, weight: 500 });
-
-  function render() {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#f2eee7'; ctx.fillRect(0, 0, cw, ch);
-    const vg = ctx.createRadialGradient(cw / 2, ch * .45, 0, cw / 2, ch * .45, Math.max(cw, ch) * .75);
-    vg.addColorStop(0, 'rgba(255,255,255,.55)'); vg.addColorStop(1, 'rgba(214,204,190,.35)');
-    ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
-
-    let sx = 0, sy = 0;
-    if (shake > 0) { sx = rand(-5, 5) * shake; sy = rand(-5, 5) * shake; }
-    ctx.setTransform(sc * dpr, 0, 0, sc * dpr, (ox + sx) * dpr, (oy + sy) * dpr);
-
-    // 玻璃展柜：细线侧壁 + 地面
-    ctx.strokeStyle = 'rgba(31,27,22,.1)'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(.5, DEAD - 20); ctx.lineTo(.5, FLOOR);
-    ctx.moveTo(W - .5, DEAD - 20); ctx.lineTo(W - .5, FLOOR);
-    ctx.stroke();
-    const fl = ctx.createLinearGradient(0, FLOOR, 0, FLOOR + 26);
-    fl.addColorStop(0, 'rgba(120,95,65,.12)'); fl.addColorStop(1, 'rgba(120,95,65,0)');
-    ctx.fillStyle = fl; ctx.fillRect(0, FLOOR, W, 26);
-    ctx.strokeStyle = 'rgba(31,27,22,.3)';
-    ctx.beginPath(); ctx.moveTo(0, FLOOR + .5); ctx.lineTo(W, FLOOR + .5); ctx.stroke();
-    label('A STUDY IN FRUIT JELLY', 0, FLOOR + 20, 'left');
-    label(`${no(0)} — ${no(MAX)}`, W - 50, FLOOR + 20, 'right');
-
-    // 警戒线
-    const danger = !demo && bodies.some(b => b.t > .8 && b.y - b.r < DEAD + 70);
-    const pulse = .5 + .5 * Math.sin(time * 10);
-    ctx.save();
-    ctx.setLineDash([2, 5]); ctx.lineWidth = 1;
-    ctx.strokeStyle = danger ? `rgba(200,69,47,${.5 + .5 * pulse})` : 'rgba(31,27,22,.22)';
-    ctx.beginPath(); ctx.moveTo(0, DEAD); ctx.lineTo(W, DEAD); ctx.stroke();
-    ctx.restore();
-    if (!demo) text('LIMIT', W - 2, DEAD - 9, { size: 8, spacing: 2, align: 'right', weight: 500,
-      color: danger ? `rgba(200,69,47,${.6 + .4 * pulse})` : 'rgba(31,27,22,.35)' });
-
-    // 瞄准线 + 待放水果
-    if (!over && cooldown <= 0) {
-      const r = FRUITS[cur].r, x = clamp(aimX, r, W - r);
-      const al = ctx.createLinearGradient(0, HOVER_Y + r, 0, FLOOR);
-      al.addColorStop(0, 'rgba(31,27,22,.22)'); al.addColorStop(1, 'rgba(31,27,22,0)');
-      ctx.strokeStyle = al; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, HOVER_Y + r + 4); ctx.lineTo(x, FLOOR); ctx.stroke();
-      drawFruit(cur, x, HOVER_Y + Math.sin(time * 3) * 2, r, 0, 1, Math.sin(time * 4.5) * .035, Math.PI / 2);
-    }
-
-    for (const b of bodies) {
-      if (b.l === DURIAN && b.fuse >= 0) {
-        // 引信：一圈倒计时 + 越来越快的颤动
-        const k = 1 - b.fuse / 1.3, jit = Math.sin(time * (20 + k * 40)) * .05 * k;
-        drawFruit(b.l, b.x, b.y, b.r, b.a, 1, jit, 0);
-        ctx.strokeStyle = `rgba(200,69,47,${.4 + .5 * k})`; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * k); ctx.stroke();
-      } else drawFruit(b.l, b.x, b.y, b.r, b.a, 1, b.sq, b.ang);
-    }
-
-    for (const p of parts) {
-      ctx.globalAlpha = clamp(p.life / p.max * 1.3, 0, 1) * .85;
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
-      if (p.cloud) continue;
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.beginPath(); ctx.arc(p.x - p.size * .3, p.y - p.size * .3, p.size * .3, 0, TAU); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    for (const f of floats) {
-      ctx.globalAlpha = clamp(f.life * 2, 0, 1);
-      text(f.text, f.x, f.y, { size: 20, serif: true, italic: true });
-    }
-    ctx.globalAlpha = 1;
-
-    // 分数 & 下一个
-    if (!demo) {
-      label('SCORE', 22, 30, 'left');
-      text(String(Math.round(shownScore)), 20, 68, { size: 46, serif: true, align: 'left' });
-      label('BEST  ' + Math.max(best, score), 22, 102, 'left');
-      drawJar();
-      if (combo > 1 && time - lastMerge < 1.1) {
-        ctx.globalAlpha = clamp((1.1 - (time - lastMerge)) * 2, 0, 1);
-        text('COMBO ×' + combo, W / 2, 136, { size: 11, spacing: 3, weight: 600, color: '#c8452f' });
-        ctx.globalAlpha = 1;
-      }
-      label('NEXT', W - 22, 30, 'right');
-      drawFruit(next, W - 44, 66, Math.min(22, FRUITS[next].r), 0);
-      text(FRUITS[next].n, W - 44, 102, { size: 11, serif: true, color: 'rgba(31,27,22,.6)' });
-      if (dropped === 0 && !over) {
-        ctx.globalAlpha = .55 + .35 * Math.sin(time * 2.5);
-        text('拖动瞄准 · 松手放下', W / 2, 420, { size: 15, serif: true, italic: true, color: '#7d756b', spacing: 1 });
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    if (banner) {
-      const t = banner.max - banner.life, a = clamp(Math.min(t * 4, banner.life * 2), 0, 1);
-      const y = 300 - (1 - Math.min(1, t * 3)) * 12;
-      const bw = banner.big ? 250 : 200, bh = banner.big ? 96 : 74;
-      ctx.save();
-      ctx.globalAlpha = a;
-      ctx.fillStyle = 'rgba(251,249,245,.88)';
-      ctx.strokeStyle = 'rgba(31,27,22,.08)';
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(W / 2 - bw / 2, y - bh / 2, bw, bh, 16); else ctx.rect(W / 2 - bw / 2, y - bh / 2, bw, bh);
-      ctx.fill(); ctx.stroke();
-      label(banner.kicker, W / 2, y - bh / 2 + 20);
-      text(banner.text, W / 2, y + (banner.big ? 12 : 9), { size: banner.big ? 34 : 24, serif: true, weight: 500, spacing: 2 });
-      ctx.restore();
-    }
-  }
+  const label = (str, x, y, align, color) => text(str, x, y, { size: 9, spacing: 2.2, color: color || 'rgba(31,27,22,.45)', align, weight: 500 });
 
   function drawJar() {
-    const { x, y, w, h } = JAR, r = 7;
+    const { x, y, w, h } = JAR, r = 7, full = juice >= .999;
     const shape = () => {
       ctx.beginPath();
       ctx.moveTo(x + 3, y); ctx.lineTo(x + w - 3, y);
@@ -1040,7 +1153,7 @@
       ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + 8); ctx.closePath();
     };
     ctx.save();
-    if (juiceReady) {
+    if (full) {
       ctx.shadowColor = rgba(layers.length ? layers[layers.length - 1].c : '#ffa53a', .9);
       ctx.shadowBlur = 12 + 6 * Math.sin(time * 6);
     }
@@ -1062,29 +1175,160 @@
     ctx.fillStyle = hl; ctx.fillRect(x, y, w, h);
     ctx.restore();
     shape(); ctx.strokeStyle = 'rgba(31,27,22,.35)'; ctx.lineWidth = 1; ctx.stroke();
-    if (juiceReady) {
+    if (full) {
       ctx.globalAlpha = .6 + .4 * Math.sin(time * 5);
       text('TAP · 榨汁', x + w / 2, y + h + 12, { size: 9, spacing: 2, weight: 600, color: '#c8452f' });
       ctx.globalAlpha = 1;
-    } else label('JUICE', x + w / 2, y + h + 12);
+    } else label('JUICER', x + w / 2, y + h + 12);
   }
 
-  // ---------- 开始页的插图 ----------
-  function paintIcon(c, l, css) {
+  function render() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#f2eee7'; ctx.fillRect(0, 0, cw, ch);
+    const vg = ctx.createRadialGradient(cw / 2, ch * .45, 0, cw / 2, ch * .45, Math.max(cw, ch) * .75);
+    vg.addColorStop(0, 'rgba(255,255,255,.55)'); vg.addColorStop(1, 'rgba(214,204,190,.35)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+
+    let sx = 0, sy = 0;
+    if (shake > 0 && !paused) { sx = rand(-5, 5) * shake; sy = rand(-5, 5) * shake; }
+    ctx.setTransform(sc * dpr, 0, 0, sc * dpr, (ox + sx) * dpr, (oy + sy) * dpr);
+
+    // 展柜：细线侧壁 + 地面
+    ctx.strokeStyle = 'rgba(31,27,22,.1)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(.5, DEAD - 20); ctx.lineTo(.5, FLOOR);
+    ctx.moveTo(W - .5, DEAD - 20); ctx.lineTo(W - .5, FLOOR);
+    ctx.stroke();
+    const fl = ctx.createLinearGradient(0, FLOOR, 0, FLOOR + 26);
+    fl.addColorStop(0, 'rgba(120,95,65,.12)'); fl.addColorStop(1, 'rgba(120,95,65,0)');
+    ctx.fillStyle = fl; ctx.fillRect(0, FLOOR, W, 26);
+    ctx.strokeStyle = 'rgba(31,27,22,.3)';
+    ctx.beginPath(); ctx.moveTo(0, FLOOR + .5); ctx.lineTo(W, FLOOR + .5); ctx.stroke();
+    label(`A STUDY IN FRUIT  ·  ${no(0)} — ${no(MAX)}`, W / 2, FLOOR + 20);
+
+    // 警戒线
+    const frozen = fx.freeze > 0;
+    const danger = !demo && !frozen && bodies.some(b => b.t > .8 && b.y - b.r < DEAD + 70);
+    const pulse = .5 + .5 * Math.sin(time * 10);
+    ctx.save();
+    ctx.setLineDash([2, 5]); ctx.lineWidth = frozen ? 2 : 1;
+    ctx.strokeStyle = frozen ? 'rgba(90,150,200,.7)' : danger ? `rgba(200,69,47,${.5 + .5 * pulse})` : 'rgba(31,27,22,.22)';
+    ctx.beginPath(); ctx.moveTo(0, DEAD); ctx.lineTo(W, DEAD); ctx.stroke();
+    ctx.restore();
+    if (!demo) text(frozen ? 'FROZEN' : 'LIMIT', W - 2, DEAD - 9, { size: 8, spacing: 2, align: 'right', weight: 500,
+      color: frozen ? 'rgba(90,150,200,.9)' : danger ? `rgba(200,69,47,${.6 + .4 * pulse})` : 'rgba(31,27,22,.35)' });
+
+    // 瞄准线 + 待放水果
+    if (!over && cooldown <= 0) {
+      const r = FRUITS[cur.l].r, x = clamp(aimX, r, W - r);
+      const al = ctx.createLinearGradient(0, HOVER_Y + r, 0, FLOOR);
+      al.addColorStop(0, 'rgba(31,27,22,.22)'); al.addColorStop(1, 'rgba(31,27,22,0)');
+      ctx.strokeStyle = al; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, HOVER_Y + r + 4); ctx.lineTo(x, FLOOR); ctx.stroke();
+      drawFruit(cur.l, x, HOVER_Y + Math.sin(time * 3) * 2, r, 0, 1, Math.sin(time * 4.5) * .035, Math.PI / 2, cur.gold);
+    }
+
+    for (const b of bodies) {
+      if (b.l === DURIAN && b.fuse >= 0) {
+        const k = 1 - b.fuse / 1.3, jit = Math.sin(time * (20 + k * 40)) * .05 * k;
+        drawFruit(b.l, b.x, b.y, b.r, b.a, 1, jit, 0);
+        ctx.strokeStyle = `rgba(200,69,47,${.4 + .5 * k})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * k); ctx.stroke();
+      } else drawFruit(b.l, b.x, b.y, b.r, b.a, 1, b.sq, b.ang, b.gold);
+    }
+
+    for (const p of parts) {
+      ctx.globalAlpha = clamp(p.life / p.max * 1.3, 0, 1) * .85;
+      ctx.fillStyle = p.color;
+      if (p.star) {
+        const s = p.size * 1.6;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s * .3, p.y); ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s * .3, p.y); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(p.x - s, p.y); ctx.lineTo(p.x, p.y + s * .3); ctx.lineTo(p.x + s, p.y); ctx.lineTo(p.x, p.y - s * .3); ctx.closePath(); ctx.fill();
+        continue;
+      }
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
+      if (p.cloud) continue;
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.beginPath(); ctx.arc(p.x - p.size * .3, p.y - p.size * .3, p.size * .3, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    for (const f of floats) {
+      ctx.globalAlpha = clamp(f.life * 2, 0, 1);
+      if (f.small) text(f.text, f.x, f.y, { size: 12, color: '#7d756b' });
+      else text(f.text, f.x, f.y, { size: 20, serif: true, italic: true, color: f.gold ? '#b8892a' : INK });
+    }
+    ctx.globalAlpha = 1;
+
+    // 分数、能量瓶、下一个、生效中的果汁
+    if (!demo) {
+      label('SCORE', 22, 30, 'left');
+      text(String(Math.round(shownScore)), 20, 68, { size: 46, serif: true, align: 'left' });
+      label('BEST  ' + Math.max(best, score), 22, 102, 'left');
+      const active = [
+        fx.double > 0 && `×2 得分 · ${Math.ceil(fx.double)}s`,
+        fx.freeze > 0 && `冻结 · ${Math.ceil(fx.freeze)}s`,
+        fx.lowg > 0 && `低重力 · ${Math.ceil(fx.lowg)}s`,
+      ].filter(Boolean);
+      active.forEach((s, i) => label(s, 22, 122 + i * 13, 'left', '#b8892a'));
+      drawJar();
+      if (combo > 1 && time - lastMerge < 1.1) {
+        ctx.globalAlpha = clamp((1.1 - (time - lastMerge)) * 2, 0, 1);
+        text('COMBO ×' + combo, W / 2, 136, { size: 11, spacing: 3, weight: 600, color: '#c8452f' });
+        ctx.globalAlpha = 1;
+      }
+      label('NEXT', W - 22, 30, 'right');
+      drawFruit(next.l, W - 44, 66, Math.min(20, FRUITS[next.l].r), 0, 1, 0, 0, next.gold);
+      text((next.gold ? '金色' : '') + FRUITS[next.l].n, W - 44, 102, { size: 11, serif: true, color: next.gold ? '#b8892a' : 'rgba(31,27,22,.6)' });
+      if (dropped === 0 && !over) {
+        ctx.globalAlpha = .55 + .35 * Math.sin(time * 2.5);
+        text('拖动瞄准 · 松手放下', W / 2, 420, { size: 15, serif: true, italic: true, color: '#7d756b', spacing: 1 });
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (banner) {
+      const t = banner.max - banner.life, a = clamp(Math.min(t * 4, banner.life * 2), 0, 1);
+      const y = 300 - (1 - Math.min(1, t * 3)) * 12;
+      const bw = banner.big ? 250 : 220, bh = banner.big ? 96 : 74;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(251,249,245,.9)';
+      ctx.strokeStyle = 'rgba(31,27,22,.08)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(W / 2 - bw / 2, y - bh / 2, bw, bh, 16); else ctx.rect(W / 2 - bw / 2, y - bh / 2, bw, bh);
+      ctx.fill(); ctx.stroke();
+      label(banner.kicker, W / 2, y - bh / 2 + 20);
+      text(banner.text, W / 2, y + (banner.big ? 12 : 9), { size: banner.big ? 34 : 24, serif: true, weight: 500, spacing: 2 });
+      ctx.restore();
+    }
+  }
+
+  // ---------- 图标（开始页、图鉴、榨汁机） ----------
+  function drawIcon(g, l, x, y, size, rot, gold) {
     const sp = sprites[l];
     if (!sp) return;
+    const S = sp.px, side = sp.R * 2.8, sx = S / 2 - side / 2, sy = S / 2 - sp.R * .12 - side / 2;
+    g.save(); g.translate(x, y);
+    const blit = (img, r) => { g.save(); if (r) g.rotate(r); g.drawImage(img, sx, sy, side, side, -size / 2, -size / 2, size, size); g.restore(); };
+    blit(sp.base); blit(gold && sp.gold ? sp.gold : sp.detail, rot || 0); blit(sp.gloss);
+    g.restore();
+  }
+  function paintIcon(c, l, css, gold) {
     const d = Math.min(window.devicePixelRatio || 1, 3);
     c.width = c.height = Math.round(css * d);
     const g = c.getContext('2d');
-    const s = c.width / sp.base.width;
-    g.save(); g.scale(s, s);
-    g.drawImage(sp.base, 0, 0);
-    g.drawImage(sp.detail, 0, 0);
-    g.drawImage(sp.gloss, 0, 0);
-    g.restore();
+    drawIcon(g, l, c.width / 2, c.height / 2, c.width, 0, gold);
+  }
+  function paintLocked(c, l, css) {
+    paintIcon(c, l, css);
+    const g = c.getContext('2d');
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = '#ddd6cb'; g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'source-over';
   }
   const chainEl = $('chain');
-  FRUITS.slice(0, MAX + 1).forEach((f, l) => {
+  FRUITS.slice(0, MAX + 1).forEach(f => {
     const c = document.createElement('canvas');
     c.title = f.n;
     chainEl.appendChild(c);
@@ -1093,72 +1337,232 @@
     paintIcon($('hero'), MAX, 132);
     [...chainEl.children].forEach((c, l) => paintIcon(c, l, 22));
     if (!$('dex').classList.contains('hide')) renderDex();
+    if (!$('juicer').classList.contains('hide')) { renderShelf(); drawCup(); }
   }
 
-  // ---------- 标本图鉴 ----------
-  function paintLocked(c, l, css) {
-    paintIcon(c, l, css);
-    const g = c.getContext('2d');
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = '#ddd6cb'; g.fillRect(0, 0, c.width, c.height);
-    g.globalCompositeOperation = 'source-over';
+  // ---------- 抽屉：打开时暂停游戏 ----------
+  const playing = () => !over && !demo;
+  function openDrawer(id) {
+    $(id).classList.remove('hide');
+    if (playing()) { paused = true; aiming = false; }
   }
+  function closeDrawer(id) {
+    $(id).classList.add('hide');
+    if ($('dex').classList.contains('hide') && $('juicer').classList.contains('hide')) paused = false;
+    dexSummary();
+  }
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+    const id = b.closest('.ov').id;
+    if (id === 'juicer' && blending) return;
+    closeDrawer(id);
+  }));
+  ['dex', 'juicer'].forEach(id => $(id).addEventListener('click', e => {
+    if (e.target === $(id) && !(id === 'juicer' && blending)) closeDrawer(id);
+  }));
+
+  // ---------- 标本图鉴 ----------
   function renderDex() {
     const grid = $('dexGrid');
     grid.innerHTML = '';
-    let found = 0;
+    let found = 0, golds = 0;
     FRUITS.forEach((f, l) => {
       if (l === RAINBOW) {
         const dv = document.createElement('div');
         dv.className = 'divider'; dv.textContent = 'SPECIAL · 特殊标本';
         grid.appendChild(dv);
       }
-      const n = dex.made[l], el = document.createElement('div');
+      const n = dex.made[l], gn = dex.gold[l], el = document.createElement('div');
       if (n) found++;
+      if (gn) golds++;
       el.className = 'spec' + (n ? '' : ' locked');
       el.innerHTML = `<canvas></canvas><div class="no">${dexNo(l).replace('Nº ', 'Nº&nbsp;')}</div>
+        ${gn ? `<div class="gold">★ 金色 ×${gn}</div>` : ''}
         <div class="nm">${n ? f.n : '未发现'}</div>
         <div class="la">${n ? INFO[l][0] : '— — —'}</div>
         <div class="nt">${n ? INFO[l][1] : (l > MAX ? '偶尔从天而降。' : '继续合成来发现它。')}</div>
-        ${n ? `<div class="ct">出现 ×${n}</div>` : ''}`;
+        ${n ? `<div class="ct">出现 ×${n} · 库存 ×${dex.stock[l]}</div>` : ''}`;
       grid.appendChild(el);
-      (n ? paintIcon : paintLocked)(el.querySelector('canvas'), l, 64);
+      const c = el.querySelector('canvas');
+      n ? paintIcon(c, l, 68, gn > 0) : paintLocked(c, l, 68);
     });
     $('dexCount').textContent = found;
+    $('dexSub').textContent = `金色标本 ${golds} / 11 · 库存可以拿去榨汁机`;
   }
   function dexSummary() {
     const found = dex.made.filter(Boolean).length;
     $('dexMini').textContent = found ? `· ${found}/13` : '';
   }
-  document.querySelectorAll('[data-dex]').forEach(b => b.addEventListener('click', () => {
-    renderDex();
-    $('dex').classList.remove('hide');
-    $('dexGrid').scrollTop = 0;
-  }));
-  const closeDex = () => { $('dex').classList.add('hide'); dexSummary(); };
-  $('dexClose').addEventListener('click', closeDex);
-  $('dex').addEventListener('click', e => { if (e.target === $('dex')) closeDex(); });
-  dexSummary();
+  const openDex = () => { renderDex(); openDrawer('dex'); $('dexGrid').scrollTop = 0; };
+  document.querySelectorAll('[data-dex]').forEach(b => b.addEventListener('click', openDex));
+  $('dexBtn').addEventListener('click', openDex);
+
+  // ---------- 榨汁机 ----------
+  let cupIngs = [], blending = false, blendT = 0, blendRc = null;
+  const cupEl = $('cup'), cupG = cupEl.getContext('2d');
+  const CUP = { w: 104, h: 136 };
+  const avail = l => dex.stock[l] - cupIngs.filter(x => x === l).length;
+
+  function openJuicer() {
+    if (!playing()) return;
+    cupIngs = [];
+    renderShelf(); updateRecipe(); drawCup();
+    openDrawer('juicer');
+  }
+  function renderShelf() {
+    const shelf = $('shelf');
+    shelf.innerHTML = '';
+    let any = false;
+    FRUITS.forEach((f, l) => {
+      const q = avail(l);
+      if (q <= 0) return;
+      any = true;
+      const it = document.createElement('div');
+      it.className = 'item'; it.dataset.l = l;
+      it.innerHTML = `<canvas></canvas><div class="q">${f.n} ×${q}</div>`;
+      shelf.appendChild(it);
+      paintIcon(it.querySelector('canvas'), l, 38);
+    });
+    if (!any) shelf.innerHTML = '<div class="empty">库存是空的。合成出来的水果会自动攒进库存。</div>';
+  }
+  function updateRecipe() {
+    const rc = recipe(cupIngs), full = juice >= .999;
+    $('rName').textContent = rc ? rc.name : '空杯子';
+    $('rEff').textContent = rc ? rc.desc : '拖一个水果进来看看会榨出什么。';
+    $('rPts').textContent = rc ? `+${rc.pts} 分${rc.distinct > 1 ? ` · ${rc.distinct} 种混合加成` : ''}` : '';
+    $('chargeTxt').textContent = Math.round(juice * 100) + '%';
+    $('chargeBar').style.width = Math.round(juice * 100) + '%';
+    const btn = $('blend');
+    btn.disabled = !rc || !full || blending;
+    btn.textContent = full ? '榨汁' : '能量不足 · 多合成几次';
+  }
+  function addIng(l) {
+    if (blending || cupIngs.length >= 3 || avail(l) <= 0) return;
+    cupIngs.push(l);
+    tone(500 + cupIngs.length * 120, 700 + cupIngs.length * 120, .08, 'sine', .12);
+    renderShelf(); updateRecipe(); drawCup();
+  }
+  const slotY = i => CUP.h - 32 - i * 30;
+
+  function drawCup() {
+    const d = Math.min(window.devicePixelRatio || 1, 3);
+    if (cupEl.width !== CUP.w * d) { cupEl.width = CUP.w * d; cupEl.height = CUP.h * d; }
+    const g = cupG;
+    g.setTransform(d, 0, 0, d, 0, 0);
+    g.clearRect(0, 0, CUP.w, CUP.h);
+    const top = 10, bot = CUP.h - 10, tl = 8, tr = CUP.w - 8, bl = 19, br = CUP.w - 19;
+    const glass = new Path2D();
+    glass.moveTo(tl, top); glass.lineTo(tr, top); glass.lineTo(br, bot - 6);
+    glass.quadraticCurveTo(br, bot, br - 6, bot); glass.lineTo(bl + 6, bot);
+    glass.quadraticCurveTo(bl, bot, bl, bot - 6); glass.closePath();
+    g.fillStyle = 'rgba(255,255,255,.7)'; g.fill(glass);
+    const k = blending ? clamp(blendT / 1.3, 0, 1) : 0;
+    if (blendRc && k > 0) {
+      g.save(); g.clip(glass);
+      const lv = bot - (bot - top - 12) * Math.min(1, k * 1.2);
+      g.fillStyle = blendRc.color; g.globalAlpha = .88;
+      g.beginPath(); g.moveTo(0, lv);
+      for (let x = 0; x <= CUP.w; x += 8) g.lineTo(x, lv + Math.sin(x * .15 + blendT * 14) * 3);
+      g.lineTo(CUP.w, CUP.h); g.lineTo(0, CUP.h); g.closePath(); g.fill();
+      g.restore();
+    }
+    cupIngs.forEach((l, i) => {
+      const s = 38 * (1 - k * .9), spin = blending ? blendT * 12 : 0;
+      const x = CUP.w / 2 + (blending ? Math.cos(blendT * 10 + i * 2) * 18 * k : (i - 1) * 6);
+      drawIcon(g, l, x, slotY(i) + (blending ? k * 20 : 0), s, spin, false);
+    });
+    if (!cupIngs.length) {
+      g.setLineDash([3, 4]); g.strokeStyle = 'rgba(31,27,22,.25)';
+      g.beginPath(); g.arc(CUP.w / 2, slotY(0), 15, 0, TAU); g.stroke(); g.setLineDash([]);
+    }
+    // 杯壁高光和轮廓
+    const hl = g.createLinearGradient(tl, 0, tl + 30, 0);
+    hl.addColorStop(0, 'rgba(255,255,255,.7)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.save(); g.clip(glass); g.fillStyle = hl; g.fillRect(tl, top, 30, bot - top); g.restore();
+    g.strokeStyle = 'rgba(31,27,22,.4)'; g.lineWidth = 1.2; g.stroke(glass);
+    g.fillStyle = 'rgba(31,27,22,.08)'; g.fillRect(bl + 4, bot + 3, br - bl - 8, 3);
+  }
+
+  function doBlend() {
+    const rc = recipe(cupIngs);
+    if (!rc || juice < .999 || blending) return;
+    blending = true; blendT = 0; blendRc = rc;
+    cupIngs.forEach(l => dex.stock[l]--);
+    saveDex();
+    updateRecipe();
+    sfx.blend(); vibrate([20, 30, 20, 30, 20]);
+    let last = performance.now();
+    const tick = now => {
+      blendT += (now - last) / 1000; last = now;
+      drawCup();
+      if (blendT < 1.5) return requestAnimationFrame(tick);
+      blending = false; blendRc = null; cupIngs = [];
+      juice = 0; layers = [];
+      closeDrawer('juicer');
+      applyJuice(rc);
+    };
+    requestAnimationFrame(tick);
+  }
+  $('blend').addEventListener('click', doBlend);
+
+  // 点杯子里的水果把它拿出来
+  cupEl.addEventListener('pointerdown', e => {
+    if (blending || !cupIngs.length) return;
+    const rect = cupEl.getBoundingClientRect(), y = (e.clientY - rect.top) * CUP.h / rect.height;
+    let best = -1, bd = 1e9;
+    cupIngs.forEach((l, i) => { const dd = Math.abs(y - slotY(i)); if (dd < bd) { bd = dd; best = i; } });
+    if (best >= 0 && bd < 26) {
+      cupIngs.splice(best, 1);
+      renderShelf(); updateRecipe(); drawCup();
+    }
+  });
+
+  // 从货架拖进杯子（轻点也可以直接放进去）
+  const ghost = $('ghost');
+  let drag = null;
+  $('shelf').addEventListener('pointerdown', e => {
+    const it = e.target.closest('.item');
+    if (!it || blending) return;
+    const l = +it.dataset.l;
+    drag = { l, x0: e.clientX, y0: e.clientY, moved: false, id: e.pointerId };
+    paintIcon(ghost, l, 60);
+    ghost.style.transform = `translate(${e.clientX - 30}px, ${e.clientY - 30}px)`;
+    e.preventDefault();
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 6) { drag.moved = true; ghost.style.display = 'block'; }
+    if (drag.moved) ghost.style.transform = `translate(${e.clientX - 30}px, ${e.clientY - 42}px) scale(1.1)`;
+  });
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const r = cupEl.getBoundingClientRect();
+    const inCup = e.clientX > r.left - 20 && e.clientX < r.right + 20 && e.clientY > r.top - 20 && e.clientY < r.bottom + 20;
+    if (!drag.moved || (e.type === 'pointerup' && inCup)) addIng(drag.l);
+    ghost.style.display = 'none';
+    drag = null;
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
 
   // ---------- 输入 ----------
   const toWorldX = e => (e.clientX - ox) / sc;
   const toWorldY = e => (e.clientY - oy) / sc;
   cv.addEventListener('pointerdown', e => {
-    if (over) return;
+    if (over || paused) return;
     const x = toWorldX(e), y = toWorldY(e);
-    if (juiceReady && x > JAR.x - 18 && x < JAR.x + JAR.w + 18 && y > JAR.y - 14 && y < JAR.y + JAR.h + 24) {
-      tapJar = true; juicer(); return;
+    if (x > JAR.x - 18 && x < JAR.x + JAR.w + 18 && y > JAR.y - 14 && y < JAR.y + JAR.h + 24) {
+      tapJar = true; openJuicer(); return;
     }
     aiming = true; aimX = x;
   });
-  cv.addEventListener('pointermove', e => { if (over) return; aimX = toWorldX(e); });
+  cv.addEventListener('pointermove', e => { if (over || paused) return; aimX = toWorldX(e); });
   cv.addEventListener('pointerup', e => {
     if (tapJar) { tapJar = false; return; }
-    if (over || !aiming) return;
+    if (over || paused || !aiming) return;
     aiming = false; aimX = toWorldX(e); drop(aimX);
   });
   cv.addEventListener('pointercancel', () => { aiming = false; });
-  document.addEventListener('touchmove', e => { if (!e.target.closest('.scroll')) e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', e => { if (!e.target.closest('.scroll') || drag) e.preventDefault(); }, { passive: false });
   document.addEventListener('contextmenu', e => e.preventDefault());
 
   function startGame() {
@@ -1178,6 +1582,7 @@
   });
 
   if (best) $('bestStart').textContent = '最高分 ' + best;
+  dexSummary();
 
   // ---------- 主循环 ----------
   window.addEventListener('resize', resize);
